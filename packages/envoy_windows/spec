@@ -1,0 +1,7 @@
+---
+name: envoy_windows
+
+dependencies: []
+
+files:
+  - envoy_nginx_windows/nginx*.zip
