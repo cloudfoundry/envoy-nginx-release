@@ -1,7 +1,9 @@
 ---
 name: envoy_windows
 
-dependencies: []
+dependencies:
+- golang-1.12-windows
 
 files:
-  - envoy_nginx_windows/nginx*.zip
+  - code.cloudfoundry.org/envoy-nginx/*.go
+  - envoy-nginx/envoy-nginx.zip

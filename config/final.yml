@@ -1,4 +1,4 @@
-name: envoy
+name: envoy-nginx
 blobstore:
   provider: s3
   options:

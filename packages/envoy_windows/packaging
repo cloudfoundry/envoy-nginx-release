@@ -2,7 +2,27 @@ $ErrorActionPreference = "Stop";
 trap { $host.SetShouldExit(1) }
 
 $BOSH_INSTALL_TARGET = Resolve-Path $env:BOSH_INSTALL_TARGET
-# Doesn't exist yet 
-$path=(Get-ChildItem "envoy_nginx_windows/nginx*.zip").FullName
+$path=(Get-ChildItem "envoy-nginx/envoy-nginx.zip").FullName
 
 Expand-Archive -Path $path -DestinationPath ${BOSH_INSTALL_TARGET}
+
+. C:\var\vcap\packages\golang-1.12-windows\bosh\compile.ps1
+$env:GOPATH="${BOSH_INSTALL_TARGET}"
+$env:PATH="${env:GOROOT}\bin;${env:PATH}"`
+
+New-Item -ItemType "directory" -Force "${BOSH_INSTALL_TARGET}\src"
+
+robocopy.exe /E "${PWD}" "${BOSH_INSTALL_TARGET}\src"
+if ($LASTEXITCODE -ge 8) {
+    Write-Error "robocopy.exe /E ${PWD} ${BOSH_INSTALL_TARGET}\src"
+}
+
+# The executable is called envoy.exe because diego components look
+# for it
+$pkg_name="envoy"
+$pkg_path="code.cloudfoundry.org/envoy-nginx"
+
+go.exe build -o "${BOSH_INSTALL_TARGET}\${pkg_name}.exe" "${pkg_path}"
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "Error compiling: ${pkg_path}"
+}
