@@ -1,0 +1,12 @@
+resources:
+- '@type': type.googleapis.com/envoy.api.v2.auth.Secret
+  name: server-validation-context
+  validation_context:
+    trusted_ca:
+      inline_string: |
+        -----BEGIN CERTIFICATE-----
+        <<REDACTED>>
+        -----END CERTIFICATE-----
+    verify_subject_alt_name:
+    - gorouter.service.cf.internal
+version_info: "0"

@@ -1,0 +1,18 @@
+resources:
+- '@type': type.googleapis.com/envoy.api.v2.auth.Secret
+  name: server-cert-and-key
+  tls_certificate:
+    certificate_chain:
+      inline_string: |
+        -----BEGIN CERTIFICATE-----
+        <<REDACTED>>
+        -----END CERTIFICATE-----
+        -----BEGIN CERTIFICATE-----
+        <<REDACTED>>
+        -----END CERTIFICATE-----
+    private_key:
+      inline_string: |
+        -----BEGIN RSA PRIVATE KEY-----
+        <<REDACTED>>
+        -----END RSA PRIVATE KEY-----
+version_info: "0"

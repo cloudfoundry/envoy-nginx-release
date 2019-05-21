@@ -1,0 +1,85 @@
+admin:
+  access_log_path: NUL
+  address:
+    socket_address:
+      address: 127.0.0.1
+      port_value: 61003
+node:
+  cluster: proxy-cluster
+  id: sidecar~172.30.2.245~7ea2d863-d9ba-4cc2-47c4-a19f~x
+static_resources:
+  clusters:
+  - circuit_breakers:
+      thresholds:
+      - max_connections: 4294967295
+    connect_timeout: 0.250s
+    hosts:
+    - socket_address:
+        address: 172.30.2.245
+        port_value: 8080
+    name: 0-service-cluster
+  - circuit_breakers:
+      thresholds:
+      - max_connections: 4294967295
+    connect_timeout: 0.250s
+    hosts:
+    - socket_address:
+        address: 172.30.2.245
+        port_value: 2222
+    name: 1-service-cluster
+  listeners:
+  - address:
+      socket_address:
+        address: 0.0.0.0
+        port_value: 61001
+    filter_chains:
+    - filters:
+      - config:
+          cluster: 0-service-cluster
+          stat_prefix: 0-stats
+        name: envoy.tcp_proxy
+      tls_context:
+        common_tls_context:
+          tls_certificate_sds_secret_configs:
+          - name: server-cert-and-key
+            sds_config:
+              path: /etc/cf-assets/envoy_config/sds-server-cert-and-key.yaml
+          tls_params:
+            cipher_suites:
+            - ECDHE-RSA-AES256-GCM-SHA384
+            - ECDHE-RSA-AES128-GCM-SHA256
+          validation_context_sds_secret_config:
+            name: server-validation-context
+            sds_config:
+              path: /etc/cf-assets/envoy_config/sds-server-validation-context.yaml
+        require_client_certificate: true
+    name: listener-8080
+  - address:
+      socket_address:
+        address: 0.0.0.0
+        port_value: 61002
+    filter_chains:
+    - filters:
+      - config:
+          cluster: 1-service-cluster
+          stat_prefix: 1-stats
+        name: envoy.tcp_proxy
+      tls_context:
+        common_tls_context:
+          tls_certificate_sds_secret_configs:
+          - name: server-cert-and-key
+            sds_config:
+              path: /etc/cf-assets/envoy_config/sds-server-cert-and-key.yaml
+          tls_params:
+            cipher_suites:
+            - ECDHE-RSA-AES256-GCM-SHA384
+            - ECDHE-RSA-AES128-GCM-SHA256
+          validation_context_sds_secret_config:
+            name: server-validation-context
+            sds_config:
+              path: /etc/cf-assets/envoy_config/sds-server-validation-context.yaml
+        require_client_certificate: true
+    name: listener-2222
+stats_config:
+  stats_matcher:
+    reject_all: true
