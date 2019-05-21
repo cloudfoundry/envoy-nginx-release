@@ -79,7 +79,6 @@ func getKey() string {
 * There's aleady a nginx.conf in the blob but that's just a placeholder.
  */
 
-// TODO: do stuff with port 61002 (ssh)
 // later TODO: read port mapping from envoy.config
 func generateConf() (string, error) {
 	certfile := filepath.Join(tmpdir, "cert.pem")
@@ -99,21 +98,31 @@ events {
 
 stream {
 
-    upstream foo {
+    upstream app {
       server 127.0.0.1:8080;
+    }
+
+    upstream sshd {
+      server 127.0.0.1:2222;
     }
 
     server {
         listen 61001 ssl;
-        listen 61002 ssl;
-
         ssl_certificate      %s;
         ssl_certificate_key  %s;
-				proxy_pass foo;
+				proxy_pass app;
+    }
 
+    server {
+        listen 61002 ssl;
+        ssl_certificate      %s;
+        ssl_certificate_key  %s;
+				proxy_pass sshd;
     }
 }
 `, convertToUnixPath(pidfile),
+		convertToUnixPath(certfile),
+		convertToUnixPath(keyfile),
 		convertToUnixPath(certfile),
 		convertToUnixPath(keyfile))
 	cert := getCert()
