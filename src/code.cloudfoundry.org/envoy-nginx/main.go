@@ -13,8 +13,6 @@ import (
 	yaml "gopkg.in/yaml.v2"
 )
 
-const sds_path = "C:\\etc\\cf-assets\\envoy_config\\sds-server-cert-and-key.yaml"
-
 var tmpdir string = os.TempDir()
 
 /*
@@ -27,11 +25,11 @@ type Resource struct {
 	TLSCertificate TLSCertificate `yaml:"tls_certificate,omitempty"`
 }
 type TLSCertificate struct {
-	CChain     CChain     `yaml:"certificate_chain,omitempty"`
+	CertChain  CertChain  `yaml:"certificate_chain,omitempty"`
 	PrivateKey PrivateKey `yaml:"private_key,omitempty"`
 }
 
-type CChain struct {
+type CertChain struct {
 	InlineString string `yaml:"inline_string,omitempty"`
 }
 
@@ -39,52 +37,41 @@ type PrivateKey struct {
 	InlineString string `yaml:"inline_string,omitempty"`
 }
 
-/* you can do better */
-func convertToUnixPath(f string) string {
-	f = strings.Replace(f, "C:", "", -1)
-	f = strings.Replace(f, "\\", "/", -1)
-	return f
+/* Convert windows paths to unix paths */
+func convertToUnixPath(path string) string {
+	path = strings.Replace(path, "C:", "", -1)
+	path = strings.Replace(path, "\\", "/", -1)
+	return path
 }
 
-//TODO: Merge getCert() and getKey()
-func getCert() string {
-	contents, err := ioutil.ReadFile(sds_path)
+/* Parses the Envoy SDS file and extracts the cert and key */
+func getCertAndKey(certsFile string) (cert, key string, err error) {
+	contents, err := ioutil.ReadFile(certsFile)
 	if err != nil {
-		panic(err)
+		return "", "", err
 	}
 
 	auth := sds{}
 
 	if err := yaml.Unmarshal(contents, &auth); err != nil {
-		panic(err)
+		return "", "", err
 	}
-	return auth.Resources[0].TLSCertificate.CChain.InlineString
+
+	cert = auth.Resources[0].TLSCertificate.CertChain.InlineString
+	key = auth.Resources[0].TLSCertificate.PrivateKey.InlineString
+	return cert, key, nil
 }
 
-func getKey() string {
-	contents, err := ioutil.ReadFile(sds_path)
-	if err != nil {
-		panic(err)
-	}
-
-	auth := sds{}
-
-	if err := yaml.Unmarshal(contents, &auth); err != nil {
-		panic(err)
-	}
-	return auth.Resources[0].TLSCertificate.PrivateKey.InlineString
-}
-
-/* generates conf file and returns it full file path.
-* There's aleady a nginx.conf in the blob but that's just a placeholder.
+/* Generates NGINX config file and returns its full file path.
+ *  There's aleady an nginx.conf in the blob but it's just a placeholder.
  */
 
-// later TODO: read port mapping from envoy.config
+// later TODO: read port mapping from envoy.yaml
 func generateConf() (string, error) {
-	certfile := filepath.Join(tmpdir, "cert.pem")
-	keyfile := filepath.Join(tmpdir, "key.pem")
-	pidfile := filepath.Join(tmpdir, "nginx.pid")
-	str := fmt.Sprintf(`
+	certFile := filepath.Join(tmpdir, "cert.pem")
+	keyFile := filepath.Join(tmpdir, "key.pem")
+	pidFile := filepath.Join(tmpdir, "nginx.pid")
+	confTemplate := fmt.Sprintf(`
 worker_processes  1;
 daemon off;
 
@@ -120,46 +107,49 @@ stream {
 				proxy_pass sshd;
     }
 }
-`, convertToUnixPath(pidfile),
-		convertToUnixPath(certfile),
-		convertToUnixPath(keyfile),
-		convertToUnixPath(certfile),
-		convertToUnixPath(keyfile))
-	cert := getCert()
-	key := getKey()
+`, convertToUnixPath(pidFile),
+		convertToUnixPath(certFile),
+		convertToUnixPath(keyFile),
+		convertToUnixPath(certFile),
+		convertToUnixPath(keyFile))
 
-	err := ioutil.WriteFile(certfile, []byte(cert), 0644)
+	certsFile := "C:\\etc\\cf-assets\\envoy_config\\sds-server-cert-and-key.yaml"
+	cert, key, err := getCertAndKey(certsFile)
 	if err != nil {
-		panic(err)
+		return "", err
 	}
 
-	err = ioutil.WriteFile(keyfile, []byte(key), 0644)
+	err = ioutil.WriteFile(certFile, []byte(cert), 0644)
 	if err != nil {
-		panic(err)
+		return "", err
 	}
 
-	d1 := []byte(str)
-	conf := filepath.Join(tmpdir, "envoy_nginx.conf")
-	err = ioutil.WriteFile(conf, d1, 0644)
+	err = ioutil.WriteFile(keyFile, []byte(key), 0644)
 	if err != nil {
-		panic(err)
+		return "", err
 	}
-	return conf, nil
+
+	confFile := filepath.Join(tmpdir, "envoy_nginx.conf")
+	err = ioutil.WriteFile(confFile, []byte(confTemplate), 0644)
+	if err != nil {
+		return "", err
+	}
+	return confFile, nil
 }
 
 func main() {
 	mypath, err := os.Executable()
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	pwd := filepath.Dir(mypath)
 
-	nginx_bin := filepath.Join(pwd, "nginx.exe")
-	nginx_conf, e := generateConf()
-	if e != nil {
-		panic(err)
+	nginxBin := filepath.Join(pwd, "nginx.exe")
+	nginxConf, err := generateConf()
+	if err != nil {
+		log.Fatal(err)
 	}
-	c := exec.Command(nginx_bin, "-c", nginx_conf, "-p", tmpdir)
+	c := exec.Command(nginxBin, "-c", nginxConf, "-p", tmpdir)
 	c.Stdout = os.Stdout
 	c.Stderr = os.Stderr
 	err = c.Run()
