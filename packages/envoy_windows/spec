@@ -6,4 +6,5 @@ dependencies:
 
 files:
   - code.cloudfoundry.org/envoy-nginx/*.go
+  - code.cloudfoundry.org/envoy-nginx/vendor/gopkg.in/yaml.v2/*.go
   - envoy-nginx/envoy-nginx.zip
