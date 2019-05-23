@@ -9,9 +9,12 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	yaml "gopkg.in/yaml.v2"
 )
+
+const DefaultSDSCredsFile = "C:\\etc\\cf-assets\\envoy_config\\sds-server-cert-and-key.yaml"
 
 var tmpdir string = os.TempDir()
 
@@ -67,10 +70,11 @@ func getCertAndKey(certsFile string) (cert, key string, err error) {
  */
 
 // later TODO: read port mapping from envoy.yaml
-func generateConf() (string, error) {
-	certFile := filepath.Join(tmpdir, "cert.pem")
-	keyFile := filepath.Join(tmpdir, "key.pem")
-	pidFile := filepath.Join(tmpdir, "nginx.pid")
+func GenerateConf() (string, error) {
+	timestamp := time.Now().UnixNano()
+	certFile := filepath.Join(tmpdir, fmt.Sprintf("cert_%d.pem", timestamp))
+	keyFile := filepath.Join(tmpdir, fmt.Sprintf("key_%d.pem", timestamp))
+	pidFile := filepath.Join(tmpdir, fmt.Sprintf("nginx_%d.pid", timestamp))
 	confTemplate := fmt.Sprintf(`
 worker_processes  1;
 daemon off;
@@ -113,7 +117,10 @@ stream {
 		convertToUnixPath(certFile),
 		convertToUnixPath(keyFile))
 
-	certsFile := "C:\\etc\\cf-assets\\envoy_config\\sds-server-cert-and-key.yaml"
+	certsFile := os.Getenv("SDSCredsFile")
+	if certsFile == "" {
+		certsFile = DefaultSDSCredsFile
+	}
 	cert, key, err := getCertAndKey(certsFile)
 	if err != nil {
 		return "", err
@@ -145,7 +152,7 @@ func main() {
 	pwd := filepath.Dir(mypath)
 
 	nginxBin := filepath.Join(pwd, "nginx.exe")
-	nginxConf, err := generateConf()
+	nginxConf, err := GenerateConf()
 	if err != nil {
 		log.Fatal(err)
 	}
