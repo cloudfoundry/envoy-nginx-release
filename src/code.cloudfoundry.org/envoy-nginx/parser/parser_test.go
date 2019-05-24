@@ -1,4 +1,4 @@
-package main_test
+package parser_test
 
 import (
 	"io/ioutil"
@@ -8,7 +8,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	. "code.cloudfoundry.org/envoy-nginx"
+	. "code.cloudfoundry.org/envoy-nginx/parser"
 )
 
 var _ = Describe("Envoy-Nginx", func() {
@@ -17,7 +17,7 @@ var _ = Describe("Envoy-Nginx", func() {
 	var err error
 
 	BeforeEach(func() {
-		os.Setenv("SDSCredsFile", "test_config/cf_assets_envoy_config/sds-server-cert-and-key.yaml")
+		os.Setenv("SDSCredsFile", "../test_config/cf_assets_envoy_config/sds-server-cert-and-key.yaml")
 		configFile, err = GenerateConf()
 		Expect(err).ShouldNot(HaveOccurred())
 		config, err = ioutil.ReadFile(configFile)
