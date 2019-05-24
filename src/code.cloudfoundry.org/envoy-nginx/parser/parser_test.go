@@ -57,19 +57,27 @@ var _ = Describe("Envoy-Nginx", func() {
 
 			Context("server listening on 61001", func() {
 				It("should have a listen 61001 ssl directive", func() {
-					Expect(false).Should(Equal(true))
+					re := regexp.MustCompile(`[\r\n]\s*listen\s*61001\s*ssl;`)
+					match := re.Find(config)
+					Expect(match).NotTo(BeNil())
 				})
 
 				It("should have a proxy_pass directive to app", func() {
-					Expect(false).Should(Equal(true))
+					re := regexp.MustCompile(`[\r\n]\s*proxy_pass\s*app;`)
+					match := re.Find(config)
+					Expect(match).NotTo(BeNil())
 				})
 
 				It("should have a valid ssl_certificate directive", func() {
-					Expect(false).Should(Equal(true))
+					re := regexp.MustCompile(`[\r\n]\s*ssl_certificate\s*/tmp/cert_\w*.pem;`)
+					match := re.Find(config)
+					Expect(match).NotTo(BeNil())
 				})
 
 				It("should have a valid ssl_certificate_key directive", func() {
-					Expect(false).Should(Equal(true))
+					re := regexp.MustCompile(`[\r\n]\s*ssl_certificate_key\s*/tmp/key_\w*.pem;`)
+					match := re.Find(config)
+					Expect(match).NotTo(BeNil())
 				})
 			})
 

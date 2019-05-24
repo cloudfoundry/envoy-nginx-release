@@ -63,16 +63,22 @@ func getCertAndKey(certsFile string) (cert, key string, err error) {
 	return cert, key, nil
 }
 
+// Create randomized file paths in tmpdir
+func generateRandomFilePath(fileName, fileExt string) string {
+	timestamp := time.Now().UnixNano()
+	f := filepath.Join(tmpdir, fmt.Sprintf("%s_%d%s", fileName, timestamp, fileExt))
+	return f
+}
+
 /* Generates NGINX config file and returns its full file path.
  *  There's aleady an nginx.conf in the blob but it's just a placeholder.
  */
 
 // later TODO: read port mapping from envoy.yaml
 func GenerateConf() (string, error) {
-	timestamp := time.Now().UnixNano()
-	certFile := filepath.Join(tmpdir, fmt.Sprintf("cert_%d.pem", timestamp))
-	keyFile := filepath.Join(tmpdir, fmt.Sprintf("key_%d.pem", timestamp))
-	pidFile := filepath.Join(tmpdir, fmt.Sprintf("nginx_%d.pid", timestamp))
+	certFile := generateRandomFilePath("cert", ".pem")
+	keyFile := generateRandomFilePath("key", ".pem")
+	pidFile := generateRandomFilePath("nginx", ".pid")
 	confTemplate := fmt.Sprintf(`
 worker_processes  1;
 daemon off;
