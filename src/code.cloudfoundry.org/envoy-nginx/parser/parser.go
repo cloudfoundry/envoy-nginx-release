@@ -10,6 +10,7 @@ import (
 	yaml "gopkg.in/yaml.v2"
 )
 
+// TODO: move this to main
 const DefaultSDSCredsFile = "C:\\etc\\cf-assets\\envoy_config\\sds-server-cert-and-key.yaml"
 
 /*
@@ -61,11 +62,9 @@ func getCertAndKey(sdsFile string) (cert, key string, err error) {
 	return cert, key, nil
 }
 
-/* Generates NGINX config file and returns its full file path.
+/* Generates NGINX config file.
  *  There's aleady an nginx.conf in the blob but it's just a placeholder.
  */
-
-// later TODO: read port mapping from envoy.yaml
 func GenerateConf(sdsFile, outputDirectory string) error {
 	confFile := filepath.Join(outputDirectory, "envoy_nginx.conf")
 	certFile := filepath.Join(outputDirectory, "cert.pem")
