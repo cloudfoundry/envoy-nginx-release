@@ -1,17 +1,8 @@
 /* Faker envoy.exe */
 package main
 
-import (
-	"log"
-	"os"
-	"os/exec"
-	"path/filepath"
-
-	parser "code.cloudfoundry.org/envoy-nginx/parser"
-)
-
 func main() {
-	mypath, err := os.Executable()
+	/*mypath, err := os.Executable()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -29,5 +20,5 @@ func main() {
 	err = c.Run()
 	if err != nil {
 		log.Fatal(err)
-	}
+	}*/
 }

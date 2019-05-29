@@ -5,14 +5,14 @@ resources:
     certificate_chain:
       inline_string: |
         -----BEGIN CERTIFICATE-----
-        <<REDACTED>>
+        <<EXPECTED CERT 1>>
         -----END CERTIFICATE-----
         -----BEGIN CERTIFICATE-----
-        <<REDACTED>>
+        <<EXPECTED CERT 2>>
         -----END CERTIFICATE-----
     private_key:
       inline_string: |
         -----BEGIN RSA PRIVATE KEY-----
-        <<REDACTED>>
+        <<EXPECTED KEY>>
         -----END RSA PRIVATE KEY-----
 version_info: "0"

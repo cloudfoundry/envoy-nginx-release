@@ -4,17 +4,13 @@ package parser
 import (
 	"fmt"
 	"io/ioutil"
-	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	yaml "gopkg.in/yaml.v2"
 )
 
 const DefaultSDSCredsFile = "C:\\etc\\cf-assets\\envoy_config\\sds-server-cert-and-key.yaml"
-
-var tmpdir string = os.TempDir()
 
 /*
 * Try to use this auth_v2 "github.com/envoyproxy/go-control-plane/envoy/api/v2/auth"?
@@ -22,9 +18,11 @@ var tmpdir string = os.TempDir()
 type sds struct {
 	Resources []Resource `yaml:"resources,omitempty"`
 }
+
 type Resource struct {
 	TLSCertificate TLSCertificate `yaml:"tls_certificate,omitempty"`
 }
+
 type TLSCertificate struct {
 	CertChain  CertChain  `yaml:"certificate_chain,omitempty"`
 	PrivateKey PrivateKey `yaml:"private_key,omitempty"`
@@ -46,8 +44,8 @@ func convertToUnixPath(path string) string {
 }
 
 /* Parses the Envoy SDS file and extracts the cert and key */
-func getCertAndKey(certsFile string) (cert, key string, err error) {
-	contents, err := ioutil.ReadFile(certsFile)
+func getCertAndKey(sdsFile string) (cert, key string, err error) {
+	contents, err := ioutil.ReadFile(sdsFile)
 	if err != nil {
 		return "", "", err
 	}
@@ -63,22 +61,17 @@ func getCertAndKey(certsFile string) (cert, key string, err error) {
 	return cert, key, nil
 }
 
-// Create randomized file paths in tmpdir
-func generateRandomFilePath(fileName, fileExt string) string {
-	timestamp := time.Now().UnixNano()
-	f := filepath.Join(tmpdir, fmt.Sprintf("%s_%d%s", fileName, timestamp, fileExt))
-	return f
-}
-
 /* Generates NGINX config file and returns its full file path.
  *  There's aleady an nginx.conf in the blob but it's just a placeholder.
  */
 
 // later TODO: read port mapping from envoy.yaml
-func GenerateConf() (string, error) {
-	certFile := generateRandomFilePath("cert", ".pem")
-	keyFile := generateRandomFilePath("key", ".pem")
-	pidFile := generateRandomFilePath("nginx", ".pid")
+func GenerateConf(sdsFile, outputDirectory string) error {
+	confFile := filepath.Join(outputDirectory, "envoy_nginx.conf")
+	certFile := filepath.Join(outputDirectory, "cert.pem")
+	keyFile := filepath.Join(outputDirectory, "key.pem")
+	pidFile := filepath.Join(outputDirectory, "nginx.pid")
+
 	confTemplate := fmt.Sprintf(`
 worker_processes  1;
 daemon off;
@@ -105,14 +98,14 @@ stream {
         listen 61001 ssl;
         ssl_certificate      %s;
         ssl_certificate_key  %s;
-				proxy_pass app;
+        proxy_pass app;
     }
 
     server {
         listen 61002 ssl;
         ssl_certificate      %s;
         ssl_certificate_key  %s;
-				proxy_pass sshd;
+        proxy_pass sshd;
     }
 }
 `, convertToUnixPath(pidFile),
@@ -121,29 +114,21 @@ stream {
 		convertToUnixPath(certFile),
 		convertToUnixPath(keyFile))
 
-	certsFile := os.Getenv("SDSCredsFile")
-	if certsFile == "" {
-		certsFile = DefaultSDSCredsFile
-	}
-	cert, key, err := getCertAndKey(certsFile)
+	cert, key, err := getCertAndKey(sdsFile)
 	if err != nil {
-		return "", err
+		return err
 	}
 
 	err = ioutil.WriteFile(certFile, []byte(cert), 0644)
 	if err != nil {
-		return "", err
+		return err
 	}
 
 	err = ioutil.WriteFile(keyFile, []byte(key), 0644)
 	if err != nil {
-		return "", err
+		return err
 	}
 
-	confFile := filepath.Join(tmpdir, "envoy_nginx.conf")
 	err = ioutil.WriteFile(confFile, []byte(confTemplate), 0644)
-	if err != nil {
-		return "", err
-	}
-	return confFile, nil
+	return err
 }
