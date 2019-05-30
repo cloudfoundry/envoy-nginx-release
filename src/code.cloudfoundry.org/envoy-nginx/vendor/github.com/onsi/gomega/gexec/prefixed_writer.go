@@ -1,5 +1,3 @@
-// untested sections: 1
-
 package gexec
 
 import (
