@@ -10,9 +10,6 @@ import (
 	yaml "gopkg.in/yaml.v2"
 )
 
-// TODO: move this to main
-const DefaultSDSCredsFile = "C:\\etc\\cf-assets\\envoy_config\\sds-server-cert-and-key.yaml"
-
 /*
 * Try to use this auth_v2 "github.com/envoyproxy/go-control-plane/envoy/api/v2/auth"?
  */
@@ -118,16 +115,16 @@ stream {
 		return err
 	}
 
+	err = ioutil.WriteFile(confFile, []byte(confTemplate), 0644)
+	if err != nil {
+		return err
+	}
+
 	err = ioutil.WriteFile(certFile, []byte(cert), 0644)
 	if err != nil {
 		return err
 	}
 
 	err = ioutil.WriteFile(keyFile, []byte(key), 0644)
-	if err != nil {
-		return err
-	}
-
-	err = ioutil.WriteFile(confFile, []byte(confTemplate), 0644)
 	return err
 }

@@ -13,15 +13,16 @@ import (
 	. "code.cloudfoundry.org/envoy-nginx/parser"
 )
 
-var _ = Describe("Envoy-Nginx", func() {
-	var configFile string
-	var config []byte
-	var err error
+var _ = Describe("Parser", func() {
 	var sdsCredsFile string
 	var tmpdir string
+	var err error
+	var configFile string
+	var config []byte
 
 	BeforeEach(func() {
-		sdsCredsFile = "../test_config/cf_assets_envoy_config/sds-server-cert-and-key.yaml"
+		sdsCredsFile = "../fixtures/cf_assets_envoy_config/sds-server-cert-and-key.yaml"
+
 		tmpdir, err = ioutil.TempDir("", "conf")
 		Expect(err).ShouldNot(HaveOccurred())
 
@@ -33,7 +34,7 @@ var _ = Describe("Envoy-Nginx", func() {
 		Expect(err).ShouldNot(HaveOccurred())
 	})
 
-	Describe("GenerateConf()", func() {
+	Describe("GenerateConf", func() {
 		It("should generate a valid nginx.conf of non-zero size", func() {
 			f, err := os.Stat(configFile)
 			Expect(err).ShouldNot(HaveOccurred())

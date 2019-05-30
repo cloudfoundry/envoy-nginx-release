@@ -1,0 +1,2 @@
+This dir contains an example of enovy configurations what are bind mounted from the vm on to the container.
+For dev purposes. All secrets redacted. Remove when ready.
