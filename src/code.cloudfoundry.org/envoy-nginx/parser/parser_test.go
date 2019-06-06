@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -83,7 +84,8 @@ var _ = Describe("Parser", func() {
 
 			It("should specify the ssl certificate and key", func() {
 				// TODO: test this separately for each server that is listening
-				matcher := fmt.Sprintf(`[\r\n]\s*ssl_certificate\s*%s/cert.pem;`, tmpdir)
+				certPath := filepath.Join(tmpdir, "cert.pem")
+				matcher := fmt.Sprintf(`[\r\n]\s*ssl_certificate\s*%s;`, convertToUnixPath(certPath))
 				re := regexp.MustCompile(matcher)
 				sslCertLine := re.Find(config)
 				Expect(sslCertLine).NotTo(BeNil())
@@ -101,7 +103,8 @@ var _ = Describe("Parser", func() {
 `
 				Expect(string(sslCert)).To(Equal(expectedCert))
 
-				matcher = fmt.Sprintf(`[\r\n]\s*ssl_certificate_key\s*%s/key.pem;`, tmpdir)
+				keyPath := filepath.Join(tmpdir, "key.pem")
+				matcher = fmt.Sprintf(`[\r\n]\s*ssl_certificate_key\s*%s;`, convertToUnixPath(keyPath))
 				re = regexp.MustCompile(matcher)
 				sslCertKeyLine := re.Find(config)
 				Expect(sslCertKeyLine).NotTo(BeNil())
@@ -123,3 +126,9 @@ var _ = Describe("Parser", func() {
 		os.RemoveAll(tmpdir)
 	})
 })
+
+func convertToUnixPath(path string) string {
+	path = strings.Replace(path, "C:", "", -1)
+	path = strings.Replace(path, "\\", "/", -1)
+	return path
+}
