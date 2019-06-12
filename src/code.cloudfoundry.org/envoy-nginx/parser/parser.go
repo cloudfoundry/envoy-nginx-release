@@ -2,13 +2,109 @@
 package parser
 
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
 	"strings"
+	"text/template"
 
 	yaml "gopkg.in/yaml.v2"
 )
+
+type EnvoyConf struct {
+	StaticResources StaticResources `yaml:"static_resources,omitempty"`
+}
+
+type StaticResources struct {
+	Clusters  []Cluster  `yaml:"clusters,omitempty"`
+	Listeners []Listener `yaml:"listeners,omitempty"`
+}
+
+type Cluster struct {
+	Hosts []Host `yaml:"hosts,omitempty"`
+	Name  string `yaml:"name,omitempty"`
+}
+
+type Host struct {
+	SocketAddress SocketAddress `yaml:"socket_address,omitempty"`
+}
+
+type SocketAddress struct {
+	Address   string `yaml:"address,omitempty"`
+	PortValue string `yaml:"port_value,omitempty"`
+}
+
+type Listener struct {
+	Address      Address       `yaml:"address,omitempty"`
+	FilterChains []FilterChain `yaml:"filter_chains,omitempty"`
+}
+
+type Address struct {
+	SocketAddress SocketAddress `yaml:"socket_address,omitempty"`
+}
+
+type FilterChain struct {
+	Filters []Filter `yaml:"filters,omitempty"`
+}
+
+type Filter struct {
+	Config Config `yaml:"config,omitempty"`
+}
+
+type Config struct {
+	Cluster string `yaml:"cluster,omitempty"`
+}
+
+type BaseTemplate struct {
+	UpstreamAddress, UpstreamPort, ListenerPort, Name, Key, Cert string
+}
+
+/* Parses the Envoy conf file and extracts the clusters*/
+// TODO: check if we can replace the multiple struct above
+func getClusters(envoyConfFile string) (clusters []Cluster, err error) {
+	contents, err := ioutil.ReadFile(envoyConfFile)
+	if err != nil {
+		return []Cluster{}, err
+	}
+
+	conf := EnvoyConf{}
+
+	err = yaml.Unmarshal(contents, &conf)
+	if err != nil {
+		return []Cluster{}, err
+	}
+
+	for i := 0; i < len(conf.StaticResources.Clusters); i++ {
+		clusters = append(clusters, conf.StaticResources.Clusters[i])
+	}
+
+	return clusters, nil
+}
+
+/* Parses the Envoy conf file and extracts a map from cluster name to listener port*/
+func getClusterNameToListenerPortMap(envoyConfFile string) (map[string]string, error) {
+	contents, err := ioutil.ReadFile(envoyConfFile)
+	if err != nil {
+		return map[string]string{}, err
+	}
+
+	conf := EnvoyConf{}
+
+	err = yaml.Unmarshal(contents, &conf)
+	if err != nil {
+		return map[string]string{}, err
+	}
+
+	nameToPortMap := make(map[string]string)
+	for i := 0; i < len(conf.StaticResources.Listeners); i++ {
+		clusterName := conf.StaticResources.Listeners[i].FilterChains[0].Filters[0].Config.Cluster
+		listenerPort := conf.StaticResources.Listeners[i].Address.SocketAddress.PortValue
+		nameToPortMap[clusterName] = listenerPort
+	}
+
+	return nameToPortMap, nil
+}
 
 /*
 * Try to use this auth_v2 "github.com/envoyproxy/go-control-plane/envoy/api/v2/auth"?
@@ -50,7 +146,8 @@ func getCertAndKey(sdsFile string) (cert, key string, err error) {
 
 	auth := sds{}
 
-	if err := yaml.Unmarshal(contents, &auth); err != nil {
+	err = yaml.Unmarshal(contents, &auth)
+	if err != nil {
 		return "", "", err
 	}
 
@@ -62,11 +159,66 @@ func getCertAndKey(sdsFile string) (cert, key string, err error) {
 /* Generates NGINX config file.
  *  There's aleady an nginx.conf in the blob but it's just a placeholder.
  */
-func GenerateConf(sdsFile, outputDirectory string) error {
+func GenerateConf(envoyConfFile, sdsFile, outputDirectory string) error {
 	confFile := filepath.Join(outputDirectory, "envoy_nginx.conf")
 	certFile := filepath.Join(outputDirectory, "cert.pem")
 	keyFile := filepath.Join(outputDirectory, "key.pem")
 	pidFile := filepath.Join(outputDirectory, "nginx.pid")
+
+	clusters, err := getClusters(envoyConfFile)
+	if err != nil {
+		return err
+	}
+
+	nameToPortMap, err := getClusterNameToListenerPortMap(envoyConfFile)
+	if err != nil {
+		return err
+	}
+
+	const baseTemplate = `
+    upstream {{.Name}} {
+      server {{.UpstreamAddress}}:{{.UpstreamPort}};
+    }
+
+    server {
+        listen {{.ListenerPort}} ssl;
+        ssl_certificate      {{.Cert}};
+        ssl_certificate_key  {{.Key}};
+        proxy_pass {{.Name}};
+    }
+	`
+	//create buffer to store template output
+	out := &bytes.Buffer{}
+
+	//Create a new template and parse the conf template into it
+	t := template.Must(template.New("baseTemplate").Parse(baseTemplate))
+
+	unixCert := convertToUnixPath(certFile)
+	unixKey := convertToUnixPath(keyFile)
+
+	//Execute the template for each socket address
+	for _, c := range clusters {
+		listenerPort, _ := nameToPortMap[c.Name]
+		// TODO: write a test when there is no matching port for a cluster name
+		/*listenerPort, exists := nameToPortMap[c.Name]
+		if !exists {
+			return fmt.Errorf("port is missing for cluster name %s", c.Name)
+		}*/
+
+		bts := BaseTemplate{
+			Name:            c.Name,
+			UpstreamAddress: c.Hosts[0].SocketAddress.Address,
+			UpstreamPort:    c.Hosts[0].SocketAddress.PortValue,
+			Cert:            unixCert,
+			Key:             unixKey,
+			ListenerPort:    listenerPort,
+		}
+
+		err = t.Execute(out, bts)
+		if err != nil {
+			return err
+		}
+	}
 
 	confTemplate := fmt.Sprintf(`
 worker_processes  1;
@@ -81,34 +233,10 @@ events {
 
 
 stream {
-
-    upstream app {
-      server 127.0.0.1:8080;
-    }
-
-    upstream sshd {
-      server 127.0.0.1:2222;
-    }
-
-    server {
-        listen 61001 ssl;
-        ssl_certificate      %s;
-        ssl_certificate_key  %s;
-        proxy_pass app;
-    }
-
-    server {
-        listen 61002 ssl;
-        ssl_certificate      %s;
-        ssl_certificate_key  %s;
-        proxy_pass sshd;
-    }
+	%s
 }
 `, convertToUnixPath(pidFile),
-		convertToUnixPath(certFile),
-		convertToUnixPath(keyFile),
-		convertToUnixPath(certFile),
-		convertToUnixPath(keyFile))
+		out)
 
 	cert, key, err := getCertAndKey(sdsFile)
 	if err != nil {

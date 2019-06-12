@@ -15,6 +15,7 @@ import (
 )
 
 var _ = Describe("Parser", func() {
+	var envoyConfFile string
 	var sdsCredsFile string
 	var tmpdir string
 	var err error
@@ -22,12 +23,14 @@ var _ = Describe("Parser", func() {
 	var config []byte
 
 	BeforeEach(func() {
+		envoyConfFile = "../fixtures/cf_assets_envoy_config/envoy.yaml"
+
 		sdsCredsFile = "../fixtures/cf_assets_envoy_config/sds-server-cert-and-key.yaml"
 
 		tmpdir, err = ioutil.TempDir("", "conf")
 		Expect(err).ShouldNot(HaveOccurred())
 
-		err = GenerateConf(sdsCredsFile, tmpdir)
+		err = GenerateConf(envoyConfFile, sdsCredsFile, tmpdir)
 		Expect(err).ShouldNot(HaveOccurred())
 
 		configFile = filepath.Join(tmpdir, "envoy_nginx.conf")
@@ -50,14 +53,20 @@ var _ = Describe("Parser", func() {
 				Expect(match).NotTo(BeNil())
 			})
 
-			It("should have an upstream server with addr 127.0.0.1:8080", func() {
-				re := regexp.MustCompile(`[\r\n]\s*server\s*127.0.0.1:8080;`)
+			It("should have an upstream server with addr 172.30.2.245:8080", func() {
+				re := regexp.MustCompile(`[\r\n]\s*server\s*172.30.2.245:8080;`)
 				match := re.Find(config)
 				Expect(match).NotTo(BeNil())
 			})
 
-			It("should have an upstream server with addr 127.0.0.1:2222", func() {
-				re := regexp.MustCompile(`[\r\n]\s*server\s*127.0.0.1:2222;`)
+			It("should have an upstream server with addr 172.30.2.245:2222", func() {
+				re := regexp.MustCompile(`[\r\n]\s*server\s*172.30.2.245:2222;`)
+				match := re.Find(config)
+				Expect(match).NotTo(BeNil())
+			})
+
+			It("should have an upstream server with addr 172.30.2.245:1234", func() {
+				re := regexp.MustCompile(`[\r\n]\s*server\s*172.30.2.245:1234;`)
 				match := re.Find(config)
 				Expect(match).NotTo(BeNil())
 			})
@@ -67,7 +76,7 @@ var _ = Describe("Parser", func() {
 				match := re.Find(config)
 				Expect(match).NotTo(BeNil())
 
-				re = regexp.MustCompile(`[\r\n]\s*proxy_pass\s*app;`)
+				re = regexp.MustCompile(`[\r\n]\s*proxy_pass\s*0-service-cluster;`)
 				match = re.Find(config)
 				Expect(match).NotTo(BeNil())
 			})
@@ -77,7 +86,17 @@ var _ = Describe("Parser", func() {
 				match := re.Find(config)
 				Expect(match).NotTo(BeNil())
 
-				re = regexp.MustCompile(`[\r\n]\s*proxy_pass\s*sshd;`)
+				re = regexp.MustCompile(`[\r\n]\s*proxy_pass\s*1-service-cluster;`)
+				match = re.Find(config)
+				Expect(match).NotTo(BeNil())
+			})
+
+			It("should have a valid server listening on 61003", func() {
+				re := regexp.MustCompile(`[\r\n]\s*listen\s*61003\s*ssl;`)
+				match := re.Find(config)
+				Expect(match).NotTo(BeNil())
+
+				re = regexp.MustCompile(`[\r\n]\s*proxy_pass\s*2-service-cluster;`)
 				match = re.Find(config)
 				Expect(match).NotTo(BeNil())
 			})

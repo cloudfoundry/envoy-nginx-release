@@ -11,6 +11,7 @@ import (
 	"code.cloudfoundry.org/envoy-nginx/parser"
 )
 
+const DefaultEnvoyConfFile = "C:\\etc\\cf-assets\\envoy_config\\envoy.yaml"
 const DefaultSDSCredsFile = "C:\\etc\\cf-assets\\envoy_config\\sds-server-cert-and-key.yaml"
 
 func main() {
@@ -27,7 +28,13 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// locate sds file
+	// locate envoy file - We use ENVOY_FILE for our tests
+	envoyConfFile := os.Getenv("ENVOY_FILE")
+	if envoyConfFile == "" {
+		envoyConfFile = DefaultEnvoyConfFile
+	}
+
+	// locate sds file - We use SDS_FILE for our tests
 	sdsFile := os.Getenv("SDS_FILE")
 	if sdsFile == "" {
 		sdsFile = DefaultSDSCredsFile
@@ -40,7 +47,7 @@ func main() {
 	}
 
 	// generate config
-	if err = parser.GenerateConf(sdsFile, outputDirectory); err != nil {
+	if err = parser.GenerateConf(envoyConfFile, sdsFile, outputDirectory); err != nil {
 		log.Fatal(err)
 	}
 

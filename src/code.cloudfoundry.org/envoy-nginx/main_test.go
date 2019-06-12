@@ -22,6 +22,7 @@ var _ = Describe("Envoy-Nginx", func() {
 		)
 
 		BeforeEach(func() {
+			os.Setenv("ENVOY_FILE", "fixtures/cf_assets_envoy_config/envoy.yaml")
 			os.Setenv("SDS_FILE", "fixtures/cf_assets_envoy_config/sds-server-cert-and-key.yaml")
 
 			stdout, _, err := Execute(exec.Command(envoyNginxBin))
