@@ -22,38 +22,38 @@ var _ = Describe("Envoy-Nginx", func() {
 		session         *gexec.Session
 	)
 
-	BeforeEach(func() {
-		os.Setenv("SDS_FILE", sdsFile)
-
-		session, err = Start(exec.Command(envoyNginxBin))
-		Expect(err).ToNot(HaveOccurred())
-
-		// The output of the "fake" nginx.exe will always have a comma
-		Eventually(session.Out).Should(gbytes.Say(","))
-		args = strings.Split(string(session.Out.Contents()), ",")
-
-		Expect(len(args)).To(Equal(5))
-
-		/*
-		* TODO: see about cleaning up output directory.
-		* There's a risk that if we get it wrong, we end up deleting
-		* some random directory on our filesystem.
-		 */
-		outputDirectory = strings.TrimSpace(args[4])
-	})
-
-	Context("when the sds file is rotated", func() {
-		It("rewrites the cert and key file and reloads nginx", func() {
-			// check the outputDirectory, find cert.pem and key.pem and get their last write time
-
-			copyFile("fixtures/cf_assets_envoy_config/sds-server-cert-and-key-rotated.yaml", sdsFile)
-			Eventually(session.Out, "5s").Should(gbytes.Say("-s,reload"))
-
-			// assert that the cert.pem and key.pem have a new last time
-		})
-	})
-
 	Context("when nginx.exe is present in the same directory", func() {
+		BeforeEach(func() {
+			os.Setenv("SDS_FILE", sdsFile)
+
+			session, err = Start(exec.Command(envoyNginxBin))
+			Expect(err).ToNot(HaveOccurred())
+
+			// The output of the "fake" nginx.exe will always have a comma
+			Eventually(session.Out).Should(gbytes.Say(","))
+			args = strings.Split(string(session.Out.Contents()), ",")
+
+			Expect(len(args)).To(Equal(5))
+
+			/*
+			* TODO: see about cleaning up output directory.
+			* There's a risk that if we get it wrong, we end up deleting
+			* some random directory on our filesystem.
+			 */
+			outputDirectory = strings.TrimSpace(args[4])
+		})
+
+		Context("when the sds file is rotated", func() {
+			It("rewrites the cert and key file and reloads nginx", func() {
+				// check the outputDirectory, find cert.pem and key.pem and get their last write time
+
+				copyFile("fixtures/cf_assets_envoy_config/sds-server-cert-and-key-rotated.yaml", sdsFile)
+				Eventually(session.Out, "5s").Should(gbytes.Say("-s,reload"))
+
+				// assert that the cert.pem and key.pem have a new last time
+			})
+		})
+
 		It("calls nginx with the right arguments", func() {
 			Expect(strings.TrimSpace(args[1])).To(Equal("-c"))
 
