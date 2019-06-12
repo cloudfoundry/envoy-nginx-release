@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 
 	"code.cloudfoundry.org/envoy-nginx/parser"
+	fsnotify "github.com/fsnotify/fsnotify"
 )
 
 const DefaultSDSCredsFile = "C:\\etc\\cf-assets\\envoy_config\\sds-server-cert-and-key.yaml"
@@ -46,6 +47,18 @@ func main() {
 
 	nginxConf := filepath.Join(outputDirectory, "envoy_nginx.conf")
 
+	// watch sds file
+	go watchFile(sdsFile, func() error {
+		//TODO Replace cert.pem and key.pem with their new values
+		c := exec.Command(nginxBin, "-s", "reload")
+		c.Stdout = os.Stdout
+		c.Stderr = os.Stderr
+		if err = c.Start(); err != nil {
+			log.Fatal(err)
+		}
+		return err
+	})
+
 	// invoke nginx.exe
 	c := exec.Command(nginxBin, "-c", nginxConf, "-p", outputDirectory)
 	c.Stdout = os.Stdout
@@ -53,4 +66,45 @@ func main() {
 	if err = c.Run(); err != nil {
 		log.Fatal(err)
 	}
+}
+
+func watchFile(filepath string, callback func() error) {
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer watcher.Close()
+
+	done := make(chan bool)
+
+	go func() {
+		for {
+			select {
+			case event, ok := <-watcher.Events:
+				// TODO: do we want to return?
+				if !ok {
+					return
+				}
+				if event.Op&fsnotify.Write == fsnotify.Write {
+					err := callback()
+					if err != nil {
+						log.Fatal(err)
+					}
+				}
+			case err, ok := <-watcher.Errors:
+				// TODO: do we want to return?
+				if !ok {
+					return
+				}
+				log.Println("error:", err)
+			}
+		}
+	}()
+
+	err = watcher.Add(filepath)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	<-done
 }

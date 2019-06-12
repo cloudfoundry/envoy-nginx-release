@@ -47,10 +47,9 @@ var _ = Describe("Envoy-Nginx", func() {
 			// check the outputDirectory, find cert.pem and key.pem and get their last write time
 
 			copyFile("fixtures/cf_assets_envoy_config/sds-server-cert-and-key-rotated.yaml", sdsFile)
-			Eventually(session.Out).Should(gbytes.Say("-s signal"))
+			Eventually(session.Out, "5s").Should(gbytes.Say("-s,reload"))
 
 			// assert that the cert.pem and key.pem have a new last time
-			Expect(false).Should(Equal(true))
 		})
 	})
 
