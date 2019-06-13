@@ -1,10 +1,10 @@
 package main_test
 
 import (
+	"bytes"
 	"io"
-	"io/ioutil"
 	"os"
-	"path/filepath"
+	"os/exec"
 	"testing"
 
 	. "github.com/onsi/ginkgo"
@@ -13,13 +13,6 @@ import (
 )
 
 const sdsFixture = "fixtures/cf_assets_envoy_config/sds-server-cert-and-key.yaml"
-
-var (
-	envoyNginxBin string
-	err           error
-	binParentDir  string
-	nginxBin      string
-)
 
 func TestEnvoyNginx(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -46,26 +39,22 @@ func copyFile(src, dst string) error {
 	return nil
 }
 
-var _ = BeforeSuite(func() {
-	envoyNginxBin, err = gexec.Build("code.cloudfoundry.org/envoy-nginx")
-	Expect(err).ToNot(HaveOccurred())
+func Execute(c *exec.Cmd) (*bytes.Buffer, *bytes.Buffer, error) {
+	stdOut := new(bytes.Buffer)
+	stdErr := new(bytes.Buffer)
+	c.Stdout = io.MultiWriter(stdOut, GinkgoWriter)
+	c.Stderr = io.MultiWriter(stdErr, GinkgoWriter)
+	err := c.Run()
 
-	binParentDir, err = ioutil.TempDir("", "envoy-nginx")
-	Expect(err).ToNot(HaveOccurred())
+	return stdOut, stdErr, err
+}
 
-	basename := filepath.Base(envoyNginxBin)
-	err = os.Rename(envoyNginxBin, filepath.Join(binParentDir, basename))
-	Expect(err).ToNot(HaveOccurred())
-	envoyNginxBin = filepath.Join(binParentDir, basename)
+func Start(c *exec.Cmd) (*gexec.Session, error) {
+	stdOut := new(bytes.Buffer)
+	stdErr := new(bytes.Buffer)
+	c.Stdout = io.MultiWriter(stdOut, GinkgoWriter)
+	c.Stderr = io.MultiWriter(stdErr, GinkgoWriter)
+	session, err := gexec.Start(c, GinkgoWriter, GinkgoWriter)
 
-	nginxBin, err = gexec.Build("code.cloudfoundry.org/envoy-nginx/fixtures/nginx")
-	Expect(err).ToNot(HaveOccurred())
-
-	err = os.Rename(nginxBin, filepath.Join(binParentDir, "nginx.exe"))
-	Expect(err).ToNot(HaveOccurred())
-	nginxBin = filepath.Join(binParentDir, "nginx.exe")
-})
-
-var _ = AfterSuite(func() {
-	os.RemoveAll(binParentDir)
-})
+	return session, err
+}
