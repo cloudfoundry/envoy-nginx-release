@@ -1,7 +1,7 @@
-/* Faker envoy.exe */
 package parser
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
@@ -13,7 +13,7 @@ import (
 /*
 * Try to use this auth_v2 "github.com/envoyproxy/go-control-plane/envoy/api/v2/auth"?
  */
-type sds struct {
+type Sds struct {
 	Resources []Resource `yaml:"resources,omitempty"`
 }
 
@@ -48,13 +48,16 @@ func getCertAndKey(sdsFile string) (cert, key string, err error) {
 		return "", "", err
 	}
 
-	auth := sds{}
+	auth := Sds{}
 
 	if err := yaml.Unmarshal(contents, &auth); err != nil {
 		return "", "", err
 	}
 
-	// TODO validate auth.Resource exists
+	if len(auth.Resources) < 1 {
+		err = errors.New("resources section not found in sds-server-cert-and-key.yaml")
+		return "", "", err
+	}
 	cert = auth.Resources[0].TLSCertificate.CertChain.InlineString
 	key = auth.Resources[0].TLSCertificate.PrivateKey.InlineString
 	return cert, key, nil
