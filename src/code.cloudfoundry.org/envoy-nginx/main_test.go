@@ -72,7 +72,7 @@ var _ = Describe("Envoy-Nginx", func() {
 		Context("when the sds file is rotated", func() {
 			It("rewrites the cert and key file and reloads nginx", func() {
 				copyFile("fixtures/cf_assets_envoy_config/sds-server-cert-and-key-rotated.yaml", sdsFile)
-				Eventually(session.Out, "5s").Should(gbytes.Say("-s,reload"))
+				Eventually(session.Out).Should(gbytes.Say("-s,reload"))
 
 				expectedCert := `-----BEGIN CERTIFICATE-----
 <<NEW EXPECTED CERT 1>>
@@ -162,6 +162,60 @@ var _ = Describe("Envoy-Nginx", func() {
 		AfterEach(func() {
 			os.RemoveAll(binParentDir)
 			os.RemoveAll(outputDirectory)
+		})
+	})
+
+	Context("nginx.exe fails when reloaded", func() {
+		var (
+			envoyNginxBin string
+			err           error
+			binParentDir  string
+			nginxBin      string
+			sdsFile       string
+		)
+
+		BeforeEach(func() {
+			envoyNginxBin, err = gexec.Build("code.cloudfoundry.org/envoy-nginx")
+			Expect(err).ToNot(HaveOccurred())
+
+			binParentDir, err = ioutil.TempDir("", "envoy-nginx")
+			Expect(err).ToNot(HaveOccurred())
+
+			basename := filepath.Base(envoyNginxBin)
+			err = os.Rename(envoyNginxBin, filepath.Join(binParentDir, basename))
+			Expect(err).ToNot(HaveOccurred())
+			envoyNginxBin = filepath.Join(binParentDir, basename)
+
+			nginxBin, err = gexec.Build("code.cloudfoundry.org/envoy-nginx/fixtures/bad-nginx-reload")
+			Expect(err).ToNot(HaveOccurred())
+
+			err = os.Rename(nginxBin, filepath.Join(binParentDir, "nginx.exe"))
+			Expect(err).ToNot(HaveOccurred())
+			nginxBin = filepath.Join(binParentDir, "nginx.exe")
+
+			sdsFd, err := ioutil.TempFile("", "sdsFile")
+			Expect(err).ToNot(HaveOccurred())
+			sdsFile = sdsFd.Name()
+			err = copyFile(sdsFixture, sdsFile)
+			Expect(err).ToNot(HaveOccurred())
+			os.Setenv("SDS_FILE", sdsFile)
+		})
+
+		Context("when nginx.exe fails when reloaded", func() {
+			It("exits with error", func() {
+				session, err := Start(exec.Command(envoyNginxBin))
+				Expect(err).ToNot(HaveOccurred())
+
+				// The output of the "fake" nginx.exe will always have a comma
+				// Include this line so that the file watcher will have a chance to start
+				Eventually(session.Out).Should(gbytes.Say(","))
+
+				copyFile("fixtures/cf_assets_envoy_config/sds-server-cert-and-key-rotated.yaml", sdsFile)
+				Eventually(session.Out).Should(gbytes.Say("-s,reload"))
+
+				Eventually(session, "5s").Should(gexec.Exit())
+				Expect(session.ExitCode()).ToNot(Equal(0))
+			})
 		})
 	})
 
