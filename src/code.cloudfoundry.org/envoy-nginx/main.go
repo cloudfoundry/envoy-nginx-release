@@ -82,6 +82,22 @@ func reloadNginx(nginxBin, sdsFile, outputDirectory string) error {
 	if err = parser.GenerateConf(sdsFile, outputDirectory); err != nil {
 		return err
 	}
+
+	/* TODO(Arjun):
+	* Not sure the "-s reload" works so easily.
+	* Got this on the cell:
+
+	PS C:\var\vcap\packages\envoy_windows> .\nginx.exe -s reload
+	nginx: [emerg] CreateFile() "./conf/nginx.conf" failed (2: The system cannot find the file specified)
+
+	Also,
+	PS C:\var\vcap\packages\envoy_windows> .\nginx.exe -T
+	nginx: [emerg] CreateFile() "./conf/nginx.conf" failed (2: The system cannot find the file specified)
+	nginx: configuration file ./conf/nginx.conf test failed
+
+	From where does nginx come up with "./conf/nginx.conf"??
+	*/
+
 	c := exec.Command(nginxBin, "-s", "reload")
 	c.Stdout = os.Stdout
 	c.Stderr = os.Stderr
