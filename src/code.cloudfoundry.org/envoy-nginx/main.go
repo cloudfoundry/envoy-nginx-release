@@ -47,9 +47,10 @@ func main() {
 
 	nginxConf := filepath.Join(outputDirectory, "envoy_nginx.conf")
 
-	// watch sds file
 	go watchFile(sdsFile, func() error {
-		//TODO Replace cert.pem and key.pem with their new values
+		if err = parser.GenerateConf(sdsFile, outputDirectory); err != nil {
+			log.Fatal(err)
+		}
 		c := exec.Command(nginxBin, "-s", "reload")
 		c.Stdout = os.Stdout
 		c.Stderr = os.Stderr

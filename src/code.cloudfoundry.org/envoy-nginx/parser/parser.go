@@ -54,6 +54,7 @@ func getCertAndKey(sdsFile string) (cert, key string, err error) {
 		return "", "", err
 	}
 
+	// TODO validate auth.Resource exists
 	cert = auth.Resources[0].TLSCertificate.CertChain.InlineString
 	key = auth.Resources[0].TLSCertificate.PrivateKey.InlineString
 	return cert, key, nil

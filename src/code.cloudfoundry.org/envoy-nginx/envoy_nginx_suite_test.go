@@ -19,7 +19,6 @@ var (
 	err           error
 	binParentDir  string
 	nginxBin      string
-	sdsFile       string
 )
 
 func TestEnvoyNginx(t *testing.T) {
@@ -65,10 +64,6 @@ var _ = BeforeSuite(func() {
 	err = os.Rename(nginxBin, filepath.Join(binParentDir, "nginx.exe"))
 	Expect(err).ToNot(HaveOccurred())
 	nginxBin = filepath.Join(binParentDir, "nginx.exe")
-
-	sdsFile = filepath.Join(binParentDir, filepath.Base(sdsFixture))
-	err = copyFile(sdsFixture, sdsFile)
-	Expect(err).ToNot(HaveOccurred())
 })
 
 var _ = AfterSuite(func() {

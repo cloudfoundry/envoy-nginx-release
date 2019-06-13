@@ -16,14 +16,20 @@ import (
 )
 
 var _ = Describe("Envoy-Nginx", func() {
-	var (
-		args            []string
-		outputDirectory string
-		session         *gexec.Session
-	)
-
 	Context("when nginx.exe is present in the same directory", func() {
+		var (
+			args            []string
+			outputDirectory string
+			session         *gexec.Session
+			sdsFile         string
+		)
+
 		BeforeEach(func() {
+			sdsFd, err := ioutil.TempFile("", "sdsFile")
+			Expect(err).ToNot(HaveOccurred())
+			sdsFile = sdsFd.Name()
+			err = copyFile(sdsFixture, sdsFile)
+			Expect(err).ToNot(HaveOccurred())
 			os.Setenv("SDS_FILE", sdsFile)
 
 			session, err = Start(exec.Command(envoyNginxBin))
@@ -45,12 +51,31 @@ var _ = Describe("Envoy-Nginx", func() {
 
 		Context("when the sds file is rotated", func() {
 			It("rewrites the cert and key file and reloads nginx", func() {
-				// check the outputDirectory, find cert.pem and key.pem and get their last write time
-
 				copyFile("fixtures/cf_assets_envoy_config/sds-server-cert-and-key-rotated.yaml", sdsFile)
 				Eventually(session.Out, "5s").Should(gbytes.Say("-s,reload"))
 
-				// assert that the cert.pem and key.pem have a new last time
+				expectedCert := `-----BEGIN CERTIFICATE-----
+<<NEW EXPECTED CERT 1>>
+-----END CERTIFICATE-----
+-----BEGIN CERTIFICATE-----
+<<NEW EXPECTED CERT 2>>
+-----END CERTIFICATE-----
+`
+				expectedKey := `-----BEGIN RSA PRIVATE KEY-----
+<<NEW EXPECTED KEY>>
+-----END RSA PRIVATE KEY-----
+`
+				certFile := filepath.Join(outputDirectory, "cert.pem")
+				keyFile := filepath.Join(outputDirectory, "key.pem")
+
+				currentCert, err := ioutil.ReadFile(string(certFile))
+				Expect(err).ShouldNot(HaveOccurred())
+
+				currentKey, err := ioutil.ReadFile(string(keyFile))
+				Expect(err).ShouldNot(HaveOccurred())
+
+				Expect(string(currentCert)).To(Equal(expectedCert))
+				Expect(string(currentKey)).To(Equal(expectedKey))
 			})
 		})
 
@@ -88,6 +113,33 @@ var _ = Describe("Envoy-Nginx", func() {
 			Expect(foundConf).To(BeTrue())
 			Expect(foundCert).To(BeTrue())
 			Expect(foundKey).To(BeTrue())
+
+			expectedCert := `-----BEGIN CERTIFICATE-----
+<<EXPECTED CERT 1>>
+-----END CERTIFICATE-----
+-----BEGIN CERTIFICATE-----
+<<EXPECTED CERT 2>>
+-----END CERTIFICATE-----
+`
+			expectedKey := `-----BEGIN RSA PRIVATE KEY-----
+<<EXPECTED KEY>>
+-----END RSA PRIVATE KEY-----
+`
+			certFile := filepath.Join(outputDirectory, "cert.pem")
+			keyFile := filepath.Join(outputDirectory, "key.pem")
+
+			currentCert, err := ioutil.ReadFile(string(certFile))
+			Expect(err).ShouldNot(HaveOccurred())
+
+			currentKey, err := ioutil.ReadFile(string(keyFile))
+			Expect(err).ShouldNot(HaveOccurred())
+
+			Expect(string(currentCert)).To(Equal(expectedCert))
+			Expect(string(currentKey)).To(Equal(expectedKey))
+		})
+
+		AfterEach(func() {
+			os.RemoveAll(outputDirectory)
 		})
 	})
 
