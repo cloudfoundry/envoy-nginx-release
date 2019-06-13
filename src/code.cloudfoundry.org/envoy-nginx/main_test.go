@@ -165,7 +165,7 @@ var _ = Describe("Envoy-Nginx", func() {
 		})
 	})
 
-	FContext("bad nginx.exe", func() {
+	Context("bad nginx.exe", func() {
 		var (
 			envoyNginxBin string
 			err           error
