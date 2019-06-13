@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 
 	"code.cloudfoundry.org/envoy-nginx/parser"
-	fsnotify "github.com/fsnotify/fsnotify"
 )
 
 const DefaultSDSCredsFile = "C:\\etc\\cf-assets\\envoy_config\\sds-server-cert-and-key.yaml"
@@ -28,84 +27,60 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// locate sds file
 	sdsFile := os.Getenv("SDS_FILE")
 	if sdsFile == "" {
 		sdsFile = DefaultSDSCredsFile
 	}
 
-	// set output directory to be a temporary directory
 	outputDirectory, err := ioutil.TempDir("", "nginx-conf")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	// generate config
 	if err = parser.GenerateConf(sdsFile, outputDirectory); err != nil {
 		log.Fatal(err)
 	}
 
 	nginxConf := filepath.Join(outputDirectory, "envoy_nginx.conf")
 
-	go watchFile(sdsFile, func() error {
-		if err = parser.GenerateConf(sdsFile, outputDirectory); err != nil {
-			log.Fatal(err)
-		}
-		c := exec.Command(nginxBin, "-s", "reload")
-		c.Stdout = os.Stdout
-		c.Stderr = os.Stderr
-		if err = c.Start(); err != nil {
-			log.Fatal(err)
-		}
-		return err
-	})
+	/*
+	* The idea here is that the main line of execution waits for any errors
+	* on the @errorChan.
+	* There are 2 go funcs spun out - (1) executing nginx and (2) watching the SDS file.
+	* They publish errors (if any) to this error channel
+	 */
+	errorChan := make(chan error)
 
-	// invoke nginx.exe
-	c := exec.Command(nginxBin, "-c", nginxConf, "-p", outputDirectory)
-	c.Stdout = os.Stdout
-	c.Stderr = os.Stderr
-	if err = c.Run(); err != nil {
+	go func() {
+		errorChan <- watchFile(sdsFile, func() error {
+			return reloadNginx(nginxBin, sdsFile, outputDirectory)
+		})
+	}()
+
+	go func() {
+		errorChan <- executeNginx(nginxBin, nginxConf, outputDirectory)
+	}()
+
+	err = <-errorChan
+	if err != nil {
 		log.Fatal(err)
 	}
 }
 
-func watchFile(filepath string, callback func() error) {
-	watcher, err := fsnotify.NewWatcher()
-	if err != nil {
-		log.Fatal(err)
+func reloadNginx(nginxBin, sdsFile, outputDirectory string) error {
+	var err error
+	if err = parser.GenerateConf(sdsFile, outputDirectory); err != nil {
+		return err
 	}
-	defer watcher.Close()
+	c := exec.Command(nginxBin, "-s", "reload")
+	c.Stdout = os.Stdout
+	c.Stderr = os.Stderr
+	return c.Start()
+}
 
-	done := make(chan bool)
-
-	go func() {
-		for {
-			select {
-			case event, ok := <-watcher.Events:
-				// TODO: do we want to return?
-				if !ok {
-					return
-				}
-				if event.Op&fsnotify.Write == fsnotify.Write {
-					err := callback()
-					if err != nil {
-						log.Fatal(err)
-					}
-				}
-			case err, ok := <-watcher.Errors:
-				// TODO: do we want to return?
-				if !ok {
-					return
-				}
-				log.Println("error:", err)
-			}
-		}
-	}()
-
-	err = watcher.Add(filepath)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	<-done
+func executeNginx(nginxBin, nginxConf, outputDirectory string) error {
+	c := exec.Command(nginxBin, "-c", nginxConf, "-p", outputDirectory)
+	c.Stdout = os.Stdout
+	c.Stderr = os.Stderr
+	return c.Run()
 }
