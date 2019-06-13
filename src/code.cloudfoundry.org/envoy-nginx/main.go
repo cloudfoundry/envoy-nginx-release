@@ -53,12 +53,16 @@ func main() {
 
 	go func() {
 		errorChan <- watchFile(sdsFile, func() error {
-			// TODO: we observed during our testing that fsnotify
-			// can trigger "twice" when the file is re-written,
-			// and once we saw that the file contents were empty,
-			// causing the parser to fail.
-			// We should consider returning nil from the callback
-			// if the sds file is empty.
+			sdsFd, err := os.Stat(sdsFile)
+			if err != nil {
+				return err
+			}
+			/* It's observed that sometimes fsnotify may provide a double notification
+			* with one of the notifications reporting an empty file. NOOP in that case
+			 */
+			if sdsFd.Size() < 1 {
+				return nil
+			}
 			return reloadNginx(nginxBin, sdsFile, outputDirectory)
 		})
 	}()
