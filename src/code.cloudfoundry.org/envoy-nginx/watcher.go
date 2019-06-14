@@ -33,7 +33,7 @@ func watchFile(filepath string, callback func() error) error {
 					watcherErr <- err
 				}
 				if !ok {
-					watcherErr <- errors.New("File watcher: unexpected event")
+					watcherErr <- errors.New("File watcher: unexpected error")
 				}
 			}
 		}
