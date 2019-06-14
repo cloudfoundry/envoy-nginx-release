@@ -14,6 +14,7 @@ import (
 const DefaultSDSCredsFile = "C:\\etc\\cf-assets\\envoy_config\\sds-server-cert-and-key.yaml"
 
 func main() {
+	log.Println("envoy.exe: Starting executable")
 	// locate nginx.exe in the same directory as the running executable
 	mypath, err := os.Executable()
 	if err != nil {
@@ -37,6 +38,7 @@ func main() {
 		log.Fatal(err)
 	}
 
+	log.Println("envoy.exe: Generating conf")
 	if err = parser.GenerateConf(sdsFile, outputDirectory); err != nil {
 		log.Fatal(err)
 	}
@@ -53,6 +55,7 @@ func main() {
 
 	go func() {
 		errorChan <- watchFile(sdsFile, func() error {
+			log.Printf("envoy.exe: detected change in sdsfile (%s)\n", sdsFile)
 			sdsFd, err := os.Stat(sdsFile)
 			if err != nil {
 				return err
@@ -61,9 +64,10 @@ func main() {
 			* with one of the notifications reporting an empty file. NOOP in that case
 			 */
 			if sdsFd.Size() < 1 {
+				log.Printf("envoy.exe: detected change in sdsfile (%s) was a false alarm. NOOP.\n", sdsFile)
 				return nil
 			}
-			return reloadNginx(nginxBin, sdsFile, outputDirectory)
+			return reloadNginx(nginxBin, nginxConf, sdsFile, outputDirectory)
 		})
 	}()
 
@@ -77,34 +81,26 @@ func main() {
 	}
 }
 
-func reloadNginx(nginxBin, sdsFile, outputDirectory string) error {
-	var err error
-	if err = parser.GenerateConf(sdsFile, outputDirectory); err != nil {
+func reloadNginx(nginxBin, nginxConf, sdsFile, outputDirectory string) error {
+	log.Println("envoy.exe: about to reload nginx")
+	if err := parser.GenerateConf(sdsFile, outputDirectory); err != nil {
 		return err
 	}
 
-	/* TODO(Arjun):
-	* Not sure the "-s reload" works so easily.
-	* Got this on the cell:
-
-	PS C:\var\vcap\packages\envoy_windows> .\nginx.exe -s reload
-	nginx: [emerg] CreateFile() "./conf/nginx.conf" failed (2: The system cannot find the file specified)
-
-	Also,
-	PS C:\var\vcap\packages\envoy_windows> .\nginx.exe -T
-	nginx: [emerg] CreateFile() "./conf/nginx.conf" failed (2: The system cannot find the file specified)
-	nginx: configuration file ./conf/nginx.conf test failed
-
-	From where does nginx come up with "./conf/nginx.conf"??
-	*/
-
-	c := exec.Command(nginxBin, "-s", "reload")
+	/*
+	* The reason we need to be explicit about the the -c and -p is because the nginx.exe
+	* we use (as of date) is wired during compilation to use "./conf/nginx.conf" as
+	 */
+	log.Println("envoy.exe: about to issue -s reload")
+	log.Println("envoy.exe: Executing:", nginxBin, "-c", nginxConf, "-p", outputDirectory, "-s", "reload")
+	c := exec.Command(nginxBin, "-c", nginxConf, "-p", outputDirectory, "-s", "reload")
 	c.Stdout = os.Stdout
 	c.Stderr = os.Stderr
 	return c.Run()
 }
 
 func executeNginx(nginxBin, nginxConf, outputDirectory string) error {
+	log.Println("envoy.exe: Executing:", nginxBin, "-c", nginxConf, "-p", outputDirectory)
 	c := exec.Command(nginxBin, "-c", nginxConf, "-p", outputDirectory)
 	c.Stdout = os.Stdout
 	c.Stderr = os.Stderr

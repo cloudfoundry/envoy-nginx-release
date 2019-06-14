@@ -11,8 +11,10 @@ import (
 func main() {
 	fmt.Println(strings.Join(os.Args, ","))
 
-	if len(os.Args) > 2 && os.Args[1] == "-s" && os.Args[2] == "reload" {
-		os.Exit(1)
+	for i, arg := range os.Args {
+		if arg == "-s" && len(os.Args) > i+1 && os.Args[i+1] == "reload" {
+			os.Exit(1)
+		}
 	}
 
 	// TODO: fix this, it could be a flake

@@ -74,7 +74,7 @@ func GenerateConf(sdsFile, outputDirectory string) error {
 
 	confTemplate := fmt.Sprintf(`
 worker_processes  1;
-daemon off;
+daemon on;
 
 error_log stderr;
 pid %s;
