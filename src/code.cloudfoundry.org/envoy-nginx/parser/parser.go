@@ -60,50 +60,33 @@ type BaseTemplate struct {
 	UpstreamAddress, UpstreamPort, ListenerPort, Name, Key, Cert string
 }
 
-/* Parses the Envoy conf file and extracts the clusters*/
+/* Parses the Envoy conf file and extracts the clusters and a map of cluster names to listeners*/
 // TODO: check if we can replace the multiple struct above
-func getClusters(envoyConfFile string) (clusters []Cluster, err error) {
+func getClusters(envoyConfFile string) (clusters []Cluster, nameToPortMap map[string]string, err error) {
 	contents, err := ioutil.ReadFile(envoyConfFile)
 	if err != nil {
-		return []Cluster{}, err
+		return []Cluster{}, map[string]string{}, fmt.Errorf("Failed to read envoy config: %s", err)
 	}
 
 	conf := EnvoyConf{}
 
 	err = yaml.Unmarshal(contents, &conf)
 	if err != nil {
-		return []Cluster{}, err
+		return []Cluster{}, map[string]string{}, fmt.Errorf("Failed to unmarshal envoy conf: %s", err)
 	}
 
 	for i := 0; i < len(conf.StaticResources.Clusters); i++ {
 		clusters = append(clusters, conf.StaticResources.Clusters[i])
 	}
 
-	return clusters, nil
-}
-
-/* Parses the Envoy conf file and extracts a map from cluster name to listener port*/
-func getClusterNameToListenerPortMap(envoyConfFile string) (map[string]string, error) {
-	contents, err := ioutil.ReadFile(envoyConfFile)
-	if err != nil {
-		return map[string]string{}, err
-	}
-
-	conf := EnvoyConf{}
-
-	err = yaml.Unmarshal(contents, &conf)
-	if err != nil {
-		return map[string]string{}, err
-	}
-
-	nameToPortMap := make(map[string]string)
+	nameToPortMap = make(map[string]string)
 	for i := 0; i < len(conf.StaticResources.Listeners); i++ {
 		clusterName := conf.StaticResources.Listeners[i].FilterChains[0].Filters[0].Config.Cluster
 		listenerPort := conf.StaticResources.Listeners[i].Address.SocketAddress.PortValue
 		nameToPortMap[clusterName] = listenerPort
 	}
 
-	return nameToPortMap, nil
+	return clusters, nameToPortMap, nil
 }
 
 /*
@@ -141,14 +124,14 @@ func convertToUnixPath(path string) string {
 func getCertAndKey(sdsFile string) (cert, key string, err error) {
 	contents, err := ioutil.ReadFile(sdsFile)
 	if err != nil {
-		return "", "", err
+		return "", "", fmt.Errorf("Failed to read sds creds: %s", err)
 	}
 
 	auth := sds{}
 
 	err = yaml.Unmarshal(contents, &auth)
 	if err != nil {
-		return "", "", err
+		return "", "", fmt.Errorf("Failed to unmarshal sds creds: %s", err)
 	}
 
 	cert = auth.Resources[0].TLSCertificate.CertChain.InlineString
@@ -165,12 +148,7 @@ func GenerateConf(envoyConfFile, sdsFile, outputDirectory string) error {
 	keyFile := filepath.Join(outputDirectory, "key.pem")
 	pidFile := filepath.Join(outputDirectory, "nginx.pid")
 
-	clusters, err := getClusters(envoyConfFile)
-	if err != nil {
-		return err
-	}
-
-	nameToPortMap, err := getClusterNameToListenerPortMap(envoyConfFile)
+	clusters, nameToPortMap, err := getClusters(envoyConfFile)
 	if err != nil {
 		return err
 	}
@@ -198,12 +176,10 @@ func GenerateConf(envoyConfFile, sdsFile, outputDirectory string) error {
 
 	//Execute the template for each socket address
 	for _, c := range clusters {
-		listenerPort, _ := nameToPortMap[c.Name]
-		// TODO: write a test when there is no matching port for a cluster name
-		/*listenerPort, exists := nameToPortMap[c.Name]
+		listenerPort, exists := nameToPortMap[c.Name]
 		if !exists {
 			return fmt.Errorf("port is missing for cluster name %s", c.Name)
-		}*/
+		}
 
 		bts := BaseTemplate{
 			Name:            c.Name,
@@ -215,6 +191,7 @@ func GenerateConf(envoyConfFile, sdsFile, outputDirectory string) error {
 		}
 
 		err = t.Execute(out, bts)
+		// TODO: add a test
 		if err != nil {
 			return err
 		}
