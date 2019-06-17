@@ -32,7 +32,7 @@ var _ = Describe("EnvoyConfigParser", func() {
 		Context("when envoyConf doesn't exist", func() {
 			It("should return a read error", func() {
 				_, _, err := envoyConfParser.GetClusters("not-a-real-file")
-				Expect(err).To(MatchError("Failed to read envoy config: open not-a-real-file: no such file or directory"))
+				Expect(err.Error()).To(ContainSubstring("Failed to read envoy config: open not-a-real-file:"))
 			})
 		})
 

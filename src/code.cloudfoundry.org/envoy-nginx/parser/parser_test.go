@@ -202,7 +202,7 @@ var _ = Describe("Parser", func() {
 			Context("when sdsCreds doesn't exist", func() {
 				It("should return a read error", func() {
 					err := p.GenerateConf(envoyConfFile, "", tmpdir)
-					Expect(err).To(MatchError("Failed to read sds creds: open : no such file or directory"))
+					Expect(err.Error()).To(ContainSubstring("Failed to read sds creds: open :"))
 				})
 			})
 
