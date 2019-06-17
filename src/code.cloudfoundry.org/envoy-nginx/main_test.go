@@ -37,6 +37,8 @@ var _ = Describe("Envoy-Nginx", func() {
 			err = os.Rename(envoyNginxBin, filepath.Join(binParentDir, basename))
 			Expect(err).ToNot(HaveOccurred())
 			envoyNginxBin = filepath.Join(binParentDir, basename)
+			os.Setenv("ENVOY_FILE", "fixtures/cf_assets_envoy_config/envoy.yaml")
+			os.Setenv("SDS_FILE", "fixtures/cf_assets_envoy_config/sds-server-cert-and-key.yaml")
 
 			nginxBin, err = gexec.Build("code.cloudfoundry.org/envoy-nginx/fixtures/nginx")
 			Expect(err).ToNot(HaveOccurred())
