@@ -22,7 +22,18 @@ func watchFile(filepath string, callback func() error) error {
 				if !ok {
 					watcherErr <- errors.New("File watcher: unexpected event")
 				}
-				if event.Op&fsnotify.Write == fsnotify.Write {
+				if event.Op&fsnotify.Create == fsnotify.Create ||
+					event.Op&fsnotify.Write == fsnotify.Write ||
+					event.Op&fsnotify.Remove == fsnotify.Remove ||
+					event.Op&fsnotify.Rename == fsnotify.Rename ||
+					event.Op&fsnotify.Chmod == fsnotify.Chmod {
+
+					/*
+					* It is important to re-add because though the filepath has changed it's a new file
+					* Maybe it watches the inode or something
+					 */
+					watcher.Add(filepath)
+
 					err := callback()
 					if err != nil {
 						watcherErr <- err
