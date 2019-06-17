@@ -9,6 +9,8 @@ import (
 	"text/template"
 )
 
+const FILE_PERM = 0644
+
 type BaseTemplate struct {
 	UpstreamAddress, UpstreamPort, ListenerPort, Name, Key, Cert string
 }
@@ -120,22 +122,19 @@ stream {
 		return fmt.Errorf("Failed to get cert and key from sds file: %s", err)
 	}
 
-	err = ioutil.WriteFile(confFile, []byte(confTemplate), 0644)
+	err = ioutil.WriteFile(confFile, []byte(confTemplate), FILE_PERM)
 	if err != nil {
-		// TODO: Handle error
-		panic(err)
+		return fmt.Errorf("Failed to write envoy_nginx.conf: %s", err)
 	}
 
-	err = ioutil.WriteFile(certFile, []byte(cert), 0644)
+	err = ioutil.WriteFile(certFile, []byte(cert), FILE_PERM)
 	if err != nil {
-		// TODO: Handle error
-		panic(err)
+		return fmt.Errorf("Failed to write cert file: %s", err)
 	}
 
-	err = ioutil.WriteFile(keyFile, []byte(key), 0644)
+	err = ioutil.WriteFile(keyFile, []byte(key), FILE_PERM)
 	if err != nil {
-		// TODO: Handle error
-		panic(err)
+		return fmt.Errorf("Failed to write key file: %s", err)
 	}
 
 	return nil

@@ -185,6 +185,16 @@ var _ = Describe("Parser", func() {
 				})
 			})
 		})
+
+		Context("when ioutil fails to write the envoy_nginx.conf", func() {
+			// We do not test that ioutil.WriteFile fails for cert/key because
+			// our trick to cause that function to fail only works once!
+			// The trick is to pass a directory that isn't real.
+			It("returns a helpful error message", func() {
+				err := p.GenerateConf(envoyConfFile, sdsCredsFile, "not-a-real-dir")
+				Expect(err.Error()).To(ContainSubstring("Failed to write envoy_nginx.conf:"))
+			})
+		})
 	})
 })
 
