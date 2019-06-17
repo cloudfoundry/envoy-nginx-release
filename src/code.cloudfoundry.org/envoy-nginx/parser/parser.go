@@ -93,8 +93,7 @@ func (p Parser) GenerateConf(envoyConfFile, sdsFile, outputDirectory string) err
 
 		err = t.Execute(out, bts)
 		if err != nil {
-			// TODO: add a test
-			return err
+			return fmt.Errorf("Failed executing nginx config template: %s", err)
 		}
 	}
 

@@ -42,41 +42,7 @@ var _ = Describe("Parser", func() {
 			sdsCredParser.GetCertAndKeyCall.Returns.Key = "some-key"
 
 			envoyConfParser = &fakes.EnvoyConfParser{}
-			envoyConfParser.GetClustersCall.Returns.Clusters = []parser.Cluster{
-				{
-					Hosts: []parser.Host{
-						{
-							SocketAddress: parser.SocketAddress{
-								Address:   "172.30.2.245",
-								PortValue: "8080",
-							},
-						},
-					},
-					Name: "0-service-cluster",
-				},
-				{
-					Hosts: []parser.Host{
-						{
-							SocketAddress: parser.SocketAddress{
-								Address:   "172.30.2.245",
-								PortValue: "2222",
-							},
-						},
-					},
-					Name: "1-service-cluster",
-				},
-				{
-					Hosts: []parser.Host{
-						{
-							SocketAddress: parser.SocketAddress{
-								Address:   "172.30.2.245",
-								PortValue: "1234",
-							},
-						},
-					},
-					Name: "2-service-cluster",
-				},
-			}
+			envoyConfParser.GetClustersCall.Returns.Clusters = testClusters()
 			envoyConfParser.GetClustersCall.Returns.NameToPortMap = map[string]string{
 				"0-service-cluster": "61001",
 				"1-service-cluster": "61002",
@@ -226,4 +192,42 @@ func convertToUnixPath(path string) string {
 	path = strings.Replace(path, "C:", "", -1)
 	path = strings.Replace(path, "\\", "/", -1)
 	return path
+}
+
+func testClusters() []parser.Cluster {
+	return []parser.Cluster{
+		{
+			Hosts: []parser.Host{
+				{
+					SocketAddress: parser.SocketAddress{
+						Address:   "172.30.2.245",
+						PortValue: "8080",
+					},
+				},
+			},
+			Name: "0-service-cluster",
+		},
+		{
+			Hosts: []parser.Host{
+				{
+					SocketAddress: parser.SocketAddress{
+						Address:   "172.30.2.245",
+						PortValue: "2222",
+					},
+				},
+			},
+			Name: "1-service-cluster",
+		},
+		{
+			Hosts: []parser.Host{
+				{
+					SocketAddress: parser.SocketAddress{
+						Address:   "172.30.2.245",
+						PortValue: "1234",
+					},
+				},
+			},
+			Name: "2-service-cluster",
+		},
+	}
 }
