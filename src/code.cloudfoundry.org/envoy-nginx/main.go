@@ -51,8 +51,8 @@ func main() {
 	// generate config
 	envoyConfParser := parser.NewEnvoyConfParser()
 	sdsCredParser := parser.NewSdsCredParser()
-	p := parser.NewParser(envoyConfParser, sdsCredParser)
-	err = p.GenerateConf(envoyConfFile, sdsFile, outputDirectory)
+	nginxConfig := parser.NewNginxConfig(envoyConfParser, sdsCredParser)
+	err = nginxConfig.Generate(envoyConfFile, sdsFile, outputDirectory)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -81,7 +81,7 @@ func main() {
 				log.Printf("envoy.exe: detected change in sdsfile (%s) was a false alarm. NOOP.\n", sdsFile)
 				return nil
 			}
-			return reloadNginx(nginxBin, nginxConf, sdsFile, outputDirectory, envoyConfFile, p)
+			return reloadNginx(nginxBin, nginxConf, sdsFile, outputDirectory, envoyConfFile, nginxConfig)
 		})
 	}()
 
@@ -95,9 +95,10 @@ func main() {
 	}
 }
 
-func reloadNginx(nginxBin, nginxConf, sdsFile, outputDirectory, envoyConfFile string, p parser.Parser) error {
+func reloadNginx(nginxBin, nginxConfFile, sdsFile, outputDir, envoyConfFile string, nginxConfig parser.NginxConfig) error {
 	log.Println("envoy.exe: about to reload nginx")
-	if err := p.GenerateConf(envoyConfFile, sdsFile, outputDirectory); err != nil {
+	err := nginxConfig.Generate(envoyConfFile, sdsFile, outputDir)
+	if err != nil {
 		return err
 	}
 
@@ -106,16 +107,16 @@ func reloadNginx(nginxBin, nginxConf, sdsFile, outputDirectory, envoyConfFile st
 	* we use (as of date) is wired during compilation to use "./conf/nginx.conf" as
 	 */
 	log.Println("envoy.exe: about to issue -s reload")
-	log.Println("envoy.exe: Executing:", nginxBin, "-c", nginxConf, "-p", outputDirectory, "-s", "reload")
-	c := exec.Command(nginxBin, "-c", nginxConf, "-p", outputDirectory, "-s", "reload")
+	log.Println("envoy.exe: Executing:", nginxBin, "-c", nginxConfFile, "-p", outputDir, "-s", "reload")
+	c := exec.Command(nginxBin, "-c", nginxConfFile, "-p", outputDir, "-s", "reload")
 	c.Stdout = os.Stdout
 	c.Stderr = os.Stderr
 	return c.Run()
 }
 
-func executeNginx(nginxBin, nginxConf, outputDirectory string) error {
-	log.Println("envoy.exe: Executing:", nginxBin, "-c", nginxConf, "-p", outputDirectory)
-	c := exec.Command(nginxBin, "-c", nginxConf, "-p", outputDirectory)
+func executeNginx(nginxBin, nginxConfFile, outputDir string) error {
+	log.Println("envoy.exe: Executing:", nginxBin, "-c", nginxConfFile, "-p", outputDir)
+	c := exec.Command(nginxBin, "-c", nginxConfFile, "-p", outputDir)
 	c.Stdout = os.Stdout
 	c.Stderr = os.Stderr
 	return c.Run()

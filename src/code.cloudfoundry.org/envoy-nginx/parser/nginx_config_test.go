@@ -16,7 +16,7 @@ import (
 	"code.cloudfoundry.org/envoy-nginx/parser/fakes"
 )
 
-var _ = Describe("Parser", func() {
+var _ = Describe("Nginx Config", func() {
 	var (
 		envoyConfFile   string
 		sdsCredsFile    string
@@ -24,11 +24,11 @@ var _ = Describe("Parser", func() {
 		configFile      string
 		config          []byte
 		envoyConfParser *fakes.EnvoyConfParser
-		p               parser.Parser
+		nginxConfig     parser.NginxConfig
 		sdsCredParser   *fakes.SdsCredParser
 	)
 
-	Describe("GenerateConf", func() {
+	Describe("Generate", func() {
 		BeforeEach(func() {
 			envoyConfFile = "../fixtures/cf_assets_envoy_config/envoy.yaml"
 			sdsCredsFile = "../fixtures/cf_assets_envoy_config/sds-server-cert-and-key.yaml"
@@ -49,7 +49,7 @@ var _ = Describe("Parser", func() {
 				"2-service-cluster": "61003",
 			}
 
-			p = parser.NewParser(envoyConfParser, sdsCredParser)
+			nginxConfig = parser.NewNginxConfig(envoyConfParser, sdsCredParser)
 		})
 
 		AfterEach(func() {
@@ -58,7 +58,7 @@ var _ = Describe("Parser", func() {
 
 		Describe("Good configuration", func() {
 			BeforeEach(func() {
-				err := p.GenerateConf(envoyConfFile, sdsCredsFile, tmpdir)
+				err := nginxConfig.Generate(envoyConfFile, sdsCredsFile, tmpdir)
 				Expect(err).ShouldNot(HaveOccurred())
 
 				configFile = filepath.Join(tmpdir, "envoy_nginx.conf")
@@ -169,7 +169,7 @@ var _ = Describe("Parser", func() {
 				})
 
 				It("should return a custom error", func() {
-					err := p.GenerateConf(envoyConfFile, sdsCredsFile, tmpdir)
+					err := nginxConfig.Generate(envoyConfFile, sdsCredsFile, tmpdir)
 					Expect(err).To(MatchError("port is missing for cluster name banana"))
 				})
 			})
@@ -180,7 +180,7 @@ var _ = Describe("Parser", func() {
 				})
 
 				It("returns a helpful error message", func() {
-					err := p.GenerateConf(envoyConfFile, sdsCredsFile, tmpdir)
+					err := nginxConfig.Generate(envoyConfFile, sdsCredsFile, tmpdir)
 					Expect(err).To(MatchError("Failed to get cert and key from sds file: banana"))
 				})
 			})
@@ -191,7 +191,7 @@ var _ = Describe("Parser", func() {
 			// our trick to cause that function to fail only works once!
 			// The trick is to pass a directory that isn't real.
 			It("returns a helpful error message", func() {
-				err := p.GenerateConf(envoyConfFile, sdsCredsFile, "not-a-real-dir")
+				err := nginxConfig.Generate(envoyConfFile, sdsCredsFile, "not-a-real-dir")
 				Expect(err.Error()).To(ContainSubstring("Failed to write envoy_nginx.conf:"))
 			})
 		})
