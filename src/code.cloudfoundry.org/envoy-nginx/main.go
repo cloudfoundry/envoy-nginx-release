@@ -11,6 +11,7 @@ import (
 	"code.cloudfoundry.org/envoy-nginx/parser"
 )
 
+// TODO: read from -c. see executor/transformer.go
 const DefaultEnvoyConfFile = "C:\\etc\\cf-assets\\envoy_config\\envoy.yaml"
 const DefaultSDSCredsFile = "C:\\etc\\cf-assets\\envoy_config\\sds-server-cert-and-key.yaml"
 
@@ -78,7 +79,7 @@ func main() {
 				log.Printf("envoy.exe: detected change in sdsfile (%s) was a false alarm. NOOP.\n", sdsFile)
 				return nil
 			}
-			return reloadNginx(nginxBin, nginxConf, sdsFile, outputDirectory)
+			return reloadNginx(nginxBin, nginxConf, sdsFile, outputDirectory, envoyConfFile, p)
 		})
 	}()
 
@@ -92,9 +93,9 @@ func main() {
 	}
 }
 
-func reloadNginx(nginxBin, nginxConf, sdsFile, outputDirectory string) error {
+func reloadNginx(nginxBin, nginxConf, sdsFile, outputDirectory, envoyConfFile string, p parser.Parser) error {
 	log.Println("envoy.exe: about to reload nginx")
-	if err := parser.GenerateConf(sdsFile, outputDirectory); err != nil {
+	if err := p.GenerateConf(envoyConfFile, sdsFile, outputDirectory); err != nil {
 		return err
 	}
 
