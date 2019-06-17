@@ -12,16 +12,18 @@ import (
 	. "github.com/onsi/gomega"
 
 	"code.cloudfoundry.org/envoy-nginx/parser"
+	"code.cloudfoundry.org/envoy-nginx/parser/fakes"
 )
 
 var _ = Describe("Parser", func() {
 	var (
-		envoyConfFile string
-		sdsCredsFile  string
-		tmpdir        string
-		configFile    string
-		config        []byte
-		p             parser.Parser
+		envoyConfFile   string
+		sdsCredsFile    string
+		tmpdir          string
+		configFile      string
+		config          []byte
+		envoyConfParser *fakes.EnvoyConfParser
+		p               parser.Parser
 	)
 
 	Describe("GenerateConf", func() {
@@ -33,7 +35,49 @@ var _ = Describe("Parser", func() {
 			tmpdir, err = ioutil.TempDir("", "conf")
 			Expect(err).ShouldNot(HaveOccurred())
 
-			p = parser.NewParser()
+			envoyConfParser = &fakes.EnvoyConfParser{}
+			envoyConfParser.GetClustersCall.Returns.Clusters = []parser.Cluster{
+				{
+					Hosts: []parser.Host{
+						{
+							SocketAddress: parser.SocketAddress{
+								Address:   "172.30.2.245",
+								PortValue: "8080",
+							},
+						},
+					},
+					Name: "0-service-cluster",
+				},
+				{
+					Hosts: []parser.Host{
+						{
+							SocketAddress: parser.SocketAddress{
+								Address:   "172.30.2.245",
+								PortValue: "2222",
+							},
+						},
+					},
+					Name: "1-service-cluster",
+				},
+				{
+					Hosts: []parser.Host{
+						{
+							SocketAddress: parser.SocketAddress{
+								Address:   "172.30.2.245",
+								PortValue: "1234",
+							},
+						},
+					},
+					Name: "2-service-cluster",
+				},
+			}
+			envoyConfParser.GetClustersCall.Returns.NameToPortMap = map[string]string{
+				"0-service-cluster": "61001",
+				"1-service-cluster": "61002",
+				"2-service-cluster": "61003",
+			}
+
+			p = parser.NewParser(envoyConfParser)
 		})
 
 		AfterEach(func() {
@@ -155,13 +199,6 @@ var _ = Describe("Parser", func() {
 		})
 
 		Describe("Bad configuration", func() {
-			Context("when envoyConf doesn't exist", func() {
-				It("should return a read error", func() {
-					err := p.GenerateConf("", sdsCredsFile, tmpdir)
-					Expect(err).To(MatchError("Failed to read envoy config: open : no such file or directory"))
-				})
-			})
-
 			Context("when sdsCreds doesn't exist", func() {
 				It("should return a read error", func() {
 					err := p.GenerateConf(envoyConfFile, "", tmpdir)
@@ -170,42 +207,35 @@ var _ = Describe("Parser", func() {
 			})
 
 			Context("when a listener port is missing for a cluster name", func() {
-				It("should return a custom error", func() {
-					envoyConfFile = "../fixtures/cf_assets_envoy_config/envoy-cluster-without-listener.yaml"
+				BeforeEach(func() {
+					envoyConfParser.GetClustersCall.Returns.Clusters = []parser.Cluster{{Name: "banana"}}
+					envoyConfParser.GetClustersCall.Returns.NameToPortMap = map[string]string{}
+				})
 
+				It("should return a custom error", func() {
 					err := p.GenerateConf(envoyConfFile, sdsCredsFile, tmpdir)
 					Expect(err).To(MatchError("port is missing for cluster name banana"))
 				})
 			})
 
-			Context("when envoy conf contains invalid yaml", func() {
+			Context("when sds conf contains invalid yaml", func() {
 				var invalidYamlFile string
 				BeforeEach(func() {
-					tmpFile, err := ioutil.TempFile(os.TempDir(), "envoy-invalid.yaml")
+					tmpFile, err := ioutil.TempFile(os.TempDir(), "invalid.yaml")
+					Expect(err).NotTo(HaveOccurred())
+					_, err = tmpFile.Write([]byte("%%%"))
 					Expect(err).NotTo(HaveOccurred())
 
 					invalidYamlFile = tmpFile.Name()
-
-					_, err = tmpFile.Write([]byte("%%%"))
-					Expect(err).NotTo(HaveOccurred())
 				})
 
 				AfterEach(func() {
 					os.Remove(invalidYamlFile)
 				})
 
-				Context("when envoy conf contents fail to unmarshal", func() {
-					It("should return unmarshal error", func() {
-						err := p.GenerateConf(invalidYamlFile, sdsCredsFile, tmpdir)
-						Expect(err).To(MatchError("Failed to unmarshal envoy conf: yaml: could not find expected directive name"))
-					})
-				})
-
-				Context("when sds creds contents fail to unmarshal", func() {
-					It("should return unmarshal error", func() {
-						err := p.GenerateConf(envoyConfFile, invalidYamlFile, tmpdir)
-						Expect(err).To(MatchError("Failed to unmarshal sds creds: yaml: could not find expected directive name"))
-					})
+				It("should return unmarshal error", func() {
+					err := p.GenerateConf(envoyConfFile, invalidYamlFile, tmpdir)
+					Expect(err).To(MatchError("Failed to unmarshal sds creds: yaml: could not find expected directive name"))
 				})
 			})
 		})

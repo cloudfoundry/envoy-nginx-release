@@ -12,88 +12,8 @@ import (
 	yaml "gopkg.in/yaml.v2"
 )
 
-type EnvoyConf struct {
-	StaticResources StaticResources `yaml:"static_resources,omitempty"`
-}
-
-type StaticResources struct {
-	Clusters  []Cluster  `yaml:"clusters,omitempty"`
-	Listeners []Listener `yaml:"listeners,omitempty"`
-}
-
-type Cluster struct {
-	Hosts []Host `yaml:"hosts,omitempty"`
-	Name  string `yaml:"name,omitempty"`
-}
-
-type Host struct {
-	SocketAddress SocketAddress `yaml:"socket_address,omitempty"`
-}
-
-type SocketAddress struct {
-	Address   string `yaml:"address,omitempty"`
-	PortValue string `yaml:"port_value,omitempty"`
-}
-
-type Listener struct {
-	Address      Address       `yaml:"address,omitempty"`
-	FilterChains []FilterChain `yaml:"filter_chains,omitempty"`
-}
-
-type Address struct {
-	SocketAddress SocketAddress `yaml:"socket_address,omitempty"`
-}
-
-type FilterChain struct {
-	Filters []Filter `yaml:"filters,omitempty"`
-}
-
-type Filter struct {
-	Config Config `yaml:"config,omitempty"`
-}
-
-type Config struct {
-	Cluster string `yaml:"cluster,omitempty"`
-}
-
 type BaseTemplate struct {
 	UpstreamAddress, UpstreamPort, ListenerPort, Name, Key, Cert string
-}
-
-type Parser struct {
-}
-
-func NewParser() Parser {
-	return Parser{}
-}
-
-/* Parses the Envoy conf file and extracts the clusters and a map of cluster names to listeners*/
-// TODO: check if we can replace the multiple struct above
-func getClusters(envoyConfFile string) (clusters []Cluster, nameToPortMap map[string]string, err error) {
-	contents, err := ioutil.ReadFile(envoyConfFile)
-	if err != nil {
-		return []Cluster{}, map[string]string{}, fmt.Errorf("Failed to read envoy config: %s", err)
-	}
-
-	conf := EnvoyConf{}
-
-	err = yaml.Unmarshal(contents, &conf)
-	if err != nil {
-		return []Cluster{}, map[string]string{}, fmt.Errorf("Failed to unmarshal envoy conf: %s", err)
-	}
-
-	for i := 0; i < len(conf.StaticResources.Clusters); i++ {
-		clusters = append(clusters, conf.StaticResources.Clusters[i])
-	}
-
-	nameToPortMap = make(map[string]string)
-	for i := 0; i < len(conf.StaticResources.Listeners); i++ {
-		clusterName := conf.StaticResources.Listeners[i].FilterChains[0].Filters[0].Config.Cluster
-		listenerPort := conf.StaticResources.Listeners[i].Address.SocketAddress.PortValue
-		nameToPortMap[clusterName] = listenerPort
-	}
-
-	return clusters, nameToPortMap, nil
 }
 
 /*
@@ -120,6 +40,18 @@ type PrivateKey struct {
 	InlineString string `yaml:"inline_string,omitempty"`
 }
 
+type envoyConfParser interface {
+	GetClusters(file string) ([]Cluster, map[string]string, error)
+}
+
+type Parser struct {
+	envoyConfParser envoyConfParser
+}
+
+func NewParser(envoyConfParser envoyConfParser) Parser {
+	return Parser{envoyConfParser: envoyConfParser}
+}
+
 /* Convert windows paths to unix paths */
 func convertToUnixPath(path string) string {
 	path = strings.Replace(path, "C:", "", -1)
@@ -142,9 +74,9 @@ func getCertAndKey(sdsFile string) (cert, key string, err error) {
 	}
 
 	if len(auth.Resources) < 1 {
-		err = errors.New("resources section not found in sds-server-cert-and-key.yaml")
-		return "", "", err
+		return "", "", errors.New("resources section not found in sds-server-cert-and-key.yaml")
 	}
+
 	cert = auth.Resources[0].TLSCertificate.CertChain.InlineString
 	key = auth.Resources[0].TLSCertificate.PrivateKey.InlineString
 	return cert, key, nil
@@ -159,7 +91,7 @@ func (p Parser) GenerateConf(envoyConfFile, sdsFile, outputDirectory string) err
 	keyFile := filepath.Join(outputDirectory, "key.pem")
 	pidFile := filepath.Join(outputDirectory, "nginx.pid")
 
-	clusters, nameToPortMap, err := getClusters(envoyConfFile)
+	clusters, nameToPortMap, err := p.envoyConfParser.GetClusters(envoyConfFile)
 	if err != nil {
 		return err
 	}
@@ -202,8 +134,8 @@ func (p Parser) GenerateConf(envoyConfFile, sdsFile, outputDirectory string) err
 		}
 
 		err = t.Execute(out, bts)
-		// TODO: add a test
 		if err != nil {
+			// TODO: add a test
 			return err
 		}
 	}
@@ -233,14 +165,21 @@ stream {
 
 	err = ioutil.WriteFile(confFile, []byte(confTemplate), 0644)
 	if err != nil {
-		return err
+		// TODO: Handle error
+		panic(err)
 	}
 
 	err = ioutil.WriteFile(certFile, []byte(cert), 0644)
 	if err != nil {
-		return err
+		// TODO: Handle error
+		panic(err)
 	}
 
 	err = ioutil.WriteFile(keyFile, []byte(key), 0644)
-	return err
+	if err != nil {
+		// TODO: Handle error
+		panic(err)
+	}
+
+	return nil
 }
