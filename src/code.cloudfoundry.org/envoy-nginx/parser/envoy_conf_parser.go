@@ -58,7 +58,6 @@ func NewEnvoyConfParser() EnvoyConfParser {
 }
 
 /* Parses the Envoy conf file and extracts the clusters and a map of cluster names to listeners*/
-// TODO: check if we can replace the multiple struct above
 func (e EnvoyConfParser) GetClusters(envoyConfFile string) (clusters []Cluster, nameToPortMap map[string]string, err error) {
 	contents, err := ioutil.ReadFile(envoyConfFile)
 	if err != nil {
