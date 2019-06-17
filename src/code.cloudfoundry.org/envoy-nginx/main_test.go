@@ -73,7 +73,7 @@ var _ = Describe("Envoy-Nginx", func() {
 
 		Context("when the sds file is rotated", func() {
 			It("rewrites the cert and key file and reloads nginx", func() {
-				copyFile("fixtures/cf_assets_envoy_config/sds-server-cert-and-key-rotated.yaml", sdsFile)
+				rotateCert("fixtures/cf_assets_envoy_config/sds-server-cert-and-key-rotated.yaml", sdsFile)
 				Eventually(session.Out).Should(gbytes.Say("-s,reload"))
 
 				expectedCert := `-----BEGIN CERTIFICATE-----
@@ -215,7 +215,7 @@ var _ = Describe("Envoy-Nginx", func() {
 				Eventually(session.Out).Should(gbytes.Say(","))
 
 				By("simulating the cert/key rotation by diego")
-				copyFile("fixtures/cf_assets_envoy_config/sds-server-cert-and-key-rotated.yaml", sdsFile)
+				rotateCert("fixtures/cf_assets_envoy_config/sds-server-cert-and-key-rotated.yaml", sdsFile)
 				Eventually(session.Out).Should(gbytes.Say("-s,reload"))
 
 				Eventually(session, "5s").Should(gexec.Exit())
