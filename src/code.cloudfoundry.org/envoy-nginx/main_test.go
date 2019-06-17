@@ -201,6 +201,8 @@ var _ = Describe("Envoy-Nginx", func() {
 			err = copyFile(sdsFixture, sdsFile)
 			Expect(err).ToNot(HaveOccurred())
 			os.Setenv("SDS_FILE", sdsFile)
+
+			os.Setenv("ENVOY_FILE", "fixtures/cf_assets_envoy_config/envoy.yaml")
 		})
 
 		Context("when nginx.exe fails when reloaded", func() {
@@ -212,6 +214,7 @@ var _ = Describe("Envoy-Nginx", func() {
 				// Include this line so that the file watcher will have a chance to start
 				Eventually(session.Out).Should(gbytes.Say(","))
 
+				By("simulating the cert/key rotation by diego")
 				copyFile("fixtures/cf_assets_envoy_config/sds-server-cert-and-key-rotated.yaml", sdsFile)
 				Eventually(session.Out).Should(gbytes.Say("-s,reload"))
 
