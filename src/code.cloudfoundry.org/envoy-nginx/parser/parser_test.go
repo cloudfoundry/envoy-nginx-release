@@ -1,6 +1,7 @@
 package parser_test
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -24,6 +25,7 @@ var _ = Describe("Parser", func() {
 		config          []byte
 		envoyConfParser *fakes.EnvoyConfParser
 		p               parser.Parser
+		sdsCredParser   *fakes.SdsCredParser
 	)
 
 	Describe("GenerateConf", func() {
@@ -34,6 +36,10 @@ var _ = Describe("Parser", func() {
 			var err error
 			tmpdir, err = ioutil.TempDir("", "conf")
 			Expect(err).ShouldNot(HaveOccurred())
+
+			sdsCredParser = &fakes.SdsCredParser{}
+			sdsCredParser.GetCertAndKeyCall.Returns.Cert = "some-cert"
+			sdsCredParser.GetCertAndKeyCall.Returns.Key = "some-key"
 
 			envoyConfParser = &fakes.EnvoyConfParser{}
 			envoyConfParser.GetClustersCall.Returns.Clusters = []parser.Cluster{
@@ -77,7 +83,7 @@ var _ = Describe("Parser", func() {
 				"2-service-cluster": "61003",
 			}
 
-			p = parser.NewParser(envoyConfParser)
+			p = parser.NewParser(envoyConfParser, sdsCredParser)
 		})
 
 		AfterEach(func() {
@@ -157,7 +163,7 @@ var _ = Describe("Parser", func() {
 						Expect(match).NotTo(BeNil())
 					})
 
-					It("should specify the ssl certificate and key", func() {
+					It("should specify the ssl certificate", func() {
 						// TODO: test this separately for each server that is listening
 						certPath := filepath.Join(tmpdir, "cert.pem")
 						matcher := fmt.Sprintf(`[\r\n]\s*ssl_certificate\s*%s;`, convertToUnixPath(certPath))
@@ -169,18 +175,13 @@ var _ = Describe("Parser", func() {
 						sslCert, err := ioutil.ReadFile(string(sslCertPath))
 						Expect(err).ShouldNot(HaveOccurred())
 
-						expectedCert := `-----BEGIN CERTIFICATE-----
-<<EXPECTED CERT 1>>
------END CERTIFICATE-----
------BEGIN CERTIFICATE-----
-<<EXPECTED CERT 2>>
------END CERTIFICATE-----
-`
-						Expect(string(sslCert)).To(Equal(expectedCert))
+						Expect(string(sslCert)).To(Equal("some-cert"))
+					})
 
+					It("should specify the ssl private key", func() {
 						keyPath := filepath.Join(tmpdir, "key.pem")
-						matcher = fmt.Sprintf(`[\r\n]\s*ssl_certificate_key\s*%s;`, convertToUnixPath(keyPath))
-						re = regexp.MustCompile(matcher)
+						matcher := fmt.Sprintf(`[\r\n]\s*ssl_certificate_key\s*%s;`, convertToUnixPath(keyPath))
+						re := regexp.MustCompile(matcher)
 						sslCertKeyLine := re.Find(config)
 						Expect(sslCertKeyLine).NotTo(BeNil())
 
@@ -188,24 +189,13 @@ var _ = Describe("Parser", func() {
 						sslCertKey, err := ioutil.ReadFile(string(sslCertKeyPath))
 						Expect(err).ShouldNot(HaveOccurred())
 
-						expectedCertKey := `-----BEGIN RSA PRIVATE KEY-----
-<<EXPECTED KEY>>
------END RSA PRIVATE KEY-----
-`
-						Expect(string(sslCertKey)).To(Equal(expectedCertKey))
+						Expect(string(sslCertKey)).To(Equal("some-key"))
 					})
 				})
 			})
 		})
 
 		Describe("Bad configuration", func() {
-			Context("when sdsCreds doesn't exist", func() {
-				It("should return a read error", func() {
-					err := p.GenerateConf(envoyConfFile, "", tmpdir)
-					Expect(err.Error()).To(ContainSubstring("Failed to read sds creds: open :"))
-				})
-			})
-
 			Context("when a listener port is missing for a cluster name", func() {
 				BeforeEach(func() {
 					envoyConfParser.GetClustersCall.Returns.Clusters = []parser.Cluster{{Name: "banana"}}
@@ -218,24 +208,14 @@ var _ = Describe("Parser", func() {
 				})
 			})
 
-			Context("when sds conf contains invalid yaml", func() {
-				var invalidYamlFile string
+			Context("when sds cred parser fails to get cert and key", func() {
 				BeforeEach(func() {
-					tmpFile, err := ioutil.TempFile(os.TempDir(), "invalid.yaml")
-					Expect(err).NotTo(HaveOccurred())
-					_, err = tmpFile.Write([]byte("%%%"))
-					Expect(err).NotTo(HaveOccurred())
-
-					invalidYamlFile = tmpFile.Name()
+					sdsCredParser.GetCertAndKeyCall.Returns.Error = errors.New("banana")
 				})
 
-				AfterEach(func() {
-					os.Remove(invalidYamlFile)
-				})
-
-				It("should return unmarshal error", func() {
-					err := p.GenerateConf(envoyConfFile, invalidYamlFile, tmpdir)
-					Expect(err).To(MatchError("Failed to unmarshal sds creds: yaml: could not find expected directive name"))
+				It("returns a helpful error message", func() {
+					err := p.GenerateConf(envoyConfFile, sdsCredsFile, tmpdir)
+					Expect(err).To(MatchError("Failed to get cert and key from sds file: banana"))
 				})
 			})
 		})

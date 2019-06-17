@@ -50,7 +50,8 @@ func main() {
 	log.Println("envoy.exe: Generating conf")
 	// generate config
 	envoyConfParser := parser.NewEnvoyConfParser()
-	p := parser.NewParser(envoyConfParser)
+	sdsCredParser := parser.NewSdsCredParser()
+	p := parser.NewParser(envoyConfParser, sdsCredParser)
 	err = p.GenerateConf(envoyConfFile, sdsFile, outputDirectory)
 	if err != nil {
 		log.Fatal(err)
