@@ -60,6 +60,13 @@ type BaseTemplate struct {
 	UpstreamAddress, UpstreamPort, ListenerPort, Name, Key, Cert string
 }
 
+type Parser struct {
+}
+
+func NewParser() Parser {
+	return Parser{}
+}
+
 /* Parses the Envoy conf file and extracts the clusters and a map of cluster names to listeners*/
 // TODO: check if we can replace the multiple struct above
 func getClusters(envoyConfFile string) (clusters []Cluster, nameToPortMap map[string]string, err error) {
@@ -142,7 +149,7 @@ func getCertAndKey(sdsFile string) (cert, key string, err error) {
 /* Generates NGINX config file.
  *  There's aleady an nginx.conf in the blob but it's just a placeholder.
  */
-func GenerateConf(envoyConfFile, sdsFile, outputDirectory string) error {
+func (p Parser) GenerateConf(envoyConfFile, sdsFile, outputDirectory string) error {
 	confFile := filepath.Join(outputDirectory, "envoy_nginx.conf")
 	certFile := filepath.Join(outputDirectory, "cert.pem")
 	keyFile := filepath.Join(outputDirectory, "key.pem")

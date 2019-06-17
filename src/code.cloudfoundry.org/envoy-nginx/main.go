@@ -47,7 +47,9 @@ func main() {
 	}
 
 	// generate config
-	if err = parser.GenerateConf(envoyConfFile, sdsFile, outputDirectory); err != nil {
+	p := parser.NewParser()
+	err = p.GenerateConf(envoyConfFile, sdsFile, outputDirectory)
+	if err != nil {
 		log.Fatal(err)
 	}
 

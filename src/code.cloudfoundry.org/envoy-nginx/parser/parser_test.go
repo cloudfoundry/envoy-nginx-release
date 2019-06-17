@@ -11,24 +11,29 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	. "code.cloudfoundry.org/envoy-nginx/parser"
+	"code.cloudfoundry.org/envoy-nginx/parser"
 )
 
 var _ = Describe("Parser", func() {
-	var envoyConfFile string
-	var sdsCredsFile string
-	var tmpdir string
-	var err error
-	var configFile string
-	var config []byte
+	var (
+		envoyConfFile string
+		sdsCredsFile  string
+		tmpdir        string
+		configFile    string
+		config        []byte
+		p             parser.Parser
+	)
 
 	Describe("GenerateConf", func() {
 		BeforeEach(func() {
 			envoyConfFile = "../fixtures/cf_assets_envoy_config/envoy.yaml"
 			sdsCredsFile = "../fixtures/cf_assets_envoy_config/sds-server-cert-and-key.yaml"
 
+			var err error
 			tmpdir, err = ioutil.TempDir("", "conf")
 			Expect(err).ShouldNot(HaveOccurred())
+
+			p = parser.NewParser()
 		})
 
 		AfterEach(func() {
@@ -37,7 +42,7 @@ var _ = Describe("Parser", func() {
 
 		Describe("Good configuration", func() {
 			BeforeEach(func() {
-				err = GenerateConf(envoyConfFile, sdsCredsFile, tmpdir)
+				err := p.GenerateConf(envoyConfFile, sdsCredsFile, tmpdir)
 				Expect(err).ShouldNot(HaveOccurred())
 
 				configFile = filepath.Join(tmpdir, "envoy_nginx.conf")
@@ -46,7 +51,6 @@ var _ = Describe("Parser", func() {
 			})
 
 			Context("when envoyConf and sdsCreds files are configured correctly", func() {
-
 				It("should generate a valid nginx.conf of non-zero size", func() {
 					f, err := os.Stat(configFile)
 					Expect(err).ShouldNot(HaveOccurred())
@@ -153,14 +157,14 @@ var _ = Describe("Parser", func() {
 		Describe("Bad configuration", func() {
 			Context("when envoyConf doesn't exist", func() {
 				It("should return a read error", func() {
-					err = GenerateConf("", sdsCredsFile, tmpdir)
+					err := p.GenerateConf("", sdsCredsFile, tmpdir)
 					Expect(err).To(MatchError("Failed to read envoy config: open : no such file or directory"))
 				})
 			})
 
 			Context("when sdsCreds doesn't exist", func() {
 				It("should return a read error", func() {
-					err = GenerateConf(envoyConfFile, "", tmpdir)
+					err := p.GenerateConf(envoyConfFile, "", tmpdir)
 					Expect(err).To(MatchError("Failed to read sds creds: open : no such file or directory"))
 				})
 			})
@@ -169,7 +173,7 @@ var _ = Describe("Parser", func() {
 				It("should return a custom error", func() {
 					envoyConfFile = "../fixtures/cf_assets_envoy_config/envoy-cluster-without-listener.yaml"
 
-					err = GenerateConf(envoyConfFile, sdsCredsFile, tmpdir)
+					err := p.GenerateConf(envoyConfFile, sdsCredsFile, tmpdir)
 					Expect(err).To(MatchError("port is missing for cluster name banana"))
 				})
 			})
@@ -192,14 +196,14 @@ var _ = Describe("Parser", func() {
 
 				Context("when envoy conf contents fail to unmarshal", func() {
 					It("should return unmarshal error", func() {
-						err = GenerateConf(invalidYamlFile, sdsCredsFile, tmpdir)
+						err := p.GenerateConf(invalidYamlFile, sdsCredsFile, tmpdir)
 						Expect(err).To(MatchError("Failed to unmarshal envoy conf: yaml: could not find expected directive name"))
 					})
 				})
 
 				Context("when sds creds contents fail to unmarshal", func() {
 					It("should return unmarshal error", func() {
-						err = GenerateConf(envoyConfFile, invalidYamlFile, tmpdir)
+						err := p.GenerateConf(envoyConfFile, invalidYamlFile, tmpdir)
 						Expect(err).To(MatchError("Failed to unmarshal sds creds: yaml: could not find expected directive name"))
 					})
 				})
