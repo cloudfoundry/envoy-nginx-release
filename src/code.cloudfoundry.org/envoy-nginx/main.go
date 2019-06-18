@@ -68,7 +68,7 @@ func main() {
 	errorChan := make(chan error)
 
 	go func() {
-		errorChan <- watchFile(sdsFile, func() error {
+		errorChan <- WatchFile(sdsFile, func() error {
 			log.Printf("envoy.exe: detected change in sdsfile (%s)\n", sdsFile)
 			sdsFd, err := os.Stat(sdsFile)
 			if err != nil {

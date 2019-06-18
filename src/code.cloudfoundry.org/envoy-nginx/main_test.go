@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	. "code.cloudfoundry.org/envoy-nginx/testhelpers"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
@@ -50,7 +51,7 @@ var _ = Describe("Envoy-Nginx", func() {
 			sdsFd, err := ioutil.TempFile("", "sdsFile")
 			Expect(err).ToNot(HaveOccurred())
 			sdsFile = sdsFd.Name()
-			err = copyFile(sdsFixture, sdsFile)
+			err = CopyFile(sdsFixture, sdsFile)
 			Expect(err).ToNot(HaveOccurred())
 			os.Setenv("SDS_FILE", sdsFile)
 
@@ -73,7 +74,8 @@ var _ = Describe("Envoy-Nginx", func() {
 
 		Context("when the sds file is rotated", func() {
 			It("rewrites the cert and key file and reloads nginx", func() {
-				rotateCert("fixtures/cf_assets_envoy_config/sds-server-cert-and-key-rotated.yaml", sdsFile)
+				err := RotateCert("fixtures/cf_assets_envoy_config/sds-server-cert-and-key-rotated.yaml", sdsFile)
+				Expect(err).ToNot(HaveOccurred())
 				Eventually(session.Out).Should(gbytes.Say("-s,reload"))
 
 				expectedCert := `-----BEGIN CERTIFICATE-----
@@ -198,7 +200,7 @@ var _ = Describe("Envoy-Nginx", func() {
 			sdsFd, err := ioutil.TempFile("", "sdsFile")
 			Expect(err).ToNot(HaveOccurred())
 			sdsFile = sdsFd.Name()
-			err = copyFile(sdsFixture, sdsFile)
+			err = CopyFile(sdsFixture, sdsFile)
 			Expect(err).ToNot(HaveOccurred())
 			os.Setenv("SDS_FILE", sdsFile)
 
@@ -215,7 +217,8 @@ var _ = Describe("Envoy-Nginx", func() {
 				Eventually(session.Out).Should(gbytes.Say(","))
 
 				By("simulating the cert/key rotation by diego")
-				rotateCert("fixtures/cf_assets_envoy_config/sds-server-cert-and-key-rotated.yaml", sdsFile)
+				err = RotateCert("fixtures/cf_assets_envoy_config/sds-server-cert-and-key-rotated.yaml", sdsFile)
+				Expect(err).ToNot(HaveOccurred())
 				Eventually(session.Out).Should(gbytes.Say("-s,reload"))
 
 				Eventually(session, "5s").Should(gexec.Exit())
@@ -255,7 +258,7 @@ var _ = Describe("Envoy-Nginx", func() {
 			sdsFd, err := ioutil.TempFile("", "sdsFile")
 			Expect(err).ToNot(HaveOccurred())
 			sdsFile = sdsFd.Name()
-			err = copyFile(sdsFixture, sdsFile)
+			err = CopyFile(sdsFixture, sdsFile)
 			Expect(err).ToNot(HaveOccurred())
 			os.Setenv("SDS_FILE", sdsFile)
 		})
