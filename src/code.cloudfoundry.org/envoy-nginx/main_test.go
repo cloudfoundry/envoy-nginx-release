@@ -15,45 +15,49 @@ import (
 )
 
 var _ = Describe("Envoy-Nginx", func() {
+	var (
+		envoyNginxBin string
+		err           error
+		binParentDir  string
+		nginxBin      string
+		sdsFile       string
+	)
+
+	BeforeEach(func() {
+		envoyNginxBin, err = gexec.Build("code.cloudfoundry.org/envoy-nginx")
+		Expect(err).ToNot(HaveOccurred())
+
+		binParentDir, err = ioutil.TempDir("", "envoy-nginx")
+		Expect(err).ToNot(HaveOccurred())
+
+		basename := filepath.Base(envoyNginxBin)
+		err = os.Rename(envoyNginxBin, filepath.Join(binParentDir, basename))
+		Expect(err).ToNot(HaveOccurred())
+		envoyNginxBin = filepath.Join(binParentDir, basename)
+
+		sdsFd, err := ioutil.TempFile("", "sdsFile")
+		Expect(err).ToNot(HaveOccurred())
+		sdsFile = sdsFd.Name()
+		err = CopyFile(sdsFixture, sdsFile)
+		Expect(err).ToNot(HaveOccurred())
+
+		os.Setenv("SDS_FILE", sdsFile)
+		os.Setenv("ENVOY_FILE", "fixtures/cf_assets_envoy_config/envoy.yaml")
+	})
 	Context("when nginx.exe is present in the same directory", func() {
 		var (
-			envoyNginxBin string
-			err           error
-			binParentDir  string
-			nginxBin      string
-			args          []string
-			confDir       string
-			session       *gexec.Session
-			sdsFile       string
+			args    []string
+			confDir string
+			session *gexec.Session
 		)
 
 		BeforeEach(func() {
-			envoyNginxBin, err = gexec.Build("code.cloudfoundry.org/envoy-nginx")
-			Expect(err).ToNot(HaveOccurred())
-
-			binParentDir, err = ioutil.TempDir("", "envoy-nginx")
-			Expect(err).ToNot(HaveOccurred())
-
-			basename := filepath.Base(envoyNginxBin)
-			err = os.Rename(envoyNginxBin, filepath.Join(binParentDir, basename))
-			Expect(err).ToNot(HaveOccurred())
-			envoyNginxBin = filepath.Join(binParentDir, basename)
-			os.Setenv("ENVOY_FILE", "fixtures/cf_assets_envoy_config/envoy.yaml")
-			os.Setenv("SDS_FILE", "fixtures/cf_assets_envoy_config/sds-server-cert-and-key.yaml")
-
 			nginxBin, err = gexec.Build("code.cloudfoundry.org/envoy-nginx/fixtures/nginx")
 			Expect(err).ToNot(HaveOccurred())
 
 			err = os.Rename(nginxBin, filepath.Join(binParentDir, "nginx.exe"))
 			Expect(err).ToNot(HaveOccurred())
 			nginxBin = filepath.Join(binParentDir, "nginx.exe")
-
-			sdsFd, err := ioutil.TempFile("", "sdsFile")
-			Expect(err).ToNot(HaveOccurred())
-			sdsFile = sdsFd.Name()
-			err = CopyFile(sdsFixture, sdsFile)
-			Expect(err).ToNot(HaveOccurred())
-			os.Setenv("SDS_FILE", sdsFile)
 
 			session, err = Start(exec.Command(envoyNginxBin))
 			Expect(err).ToNot(HaveOccurred())
@@ -170,26 +174,7 @@ var _ = Describe("Envoy-Nginx", func() {
 	})
 
 	Context("nginx.exe fails when reloaded", func() {
-		var (
-			envoyNginxBin string
-			err           error
-			binParentDir  string
-			nginxBin      string
-			sdsFile       string
-		)
-
 		BeforeEach(func() {
-			envoyNginxBin, err = gexec.Build("code.cloudfoundry.org/envoy-nginx")
-			Expect(err).ToNot(HaveOccurred())
-
-			binParentDir, err = ioutil.TempDir("", "envoy-nginx")
-			Expect(err).ToNot(HaveOccurred())
-
-			basename := filepath.Base(envoyNginxBin)
-			err = os.Rename(envoyNginxBin, filepath.Join(binParentDir, basename))
-			Expect(err).ToNot(HaveOccurred())
-			envoyNginxBin = filepath.Join(binParentDir, basename)
-
 			nginxBin, err = gexec.Build("code.cloudfoundry.org/envoy-nginx/fixtures/bad-nginx-reload")
 			Expect(err).ToNot(HaveOccurred())
 
@@ -197,14 +182,6 @@ var _ = Describe("Envoy-Nginx", func() {
 			Expect(err).ToNot(HaveOccurred())
 			nginxBin = filepath.Join(binParentDir, "nginx.exe")
 
-			sdsFd, err := ioutil.TempFile("", "sdsFile")
-			Expect(err).ToNot(HaveOccurred())
-			sdsFile = sdsFd.Name()
-			err = CopyFile(sdsFixture, sdsFile)
-			Expect(err).ToNot(HaveOccurred())
-			os.Setenv("SDS_FILE", sdsFile)
-
-			os.Setenv("ENVOY_FILE", "fixtures/cf_assets_envoy_config/envoy.yaml")
 		})
 
 		Context("when nginx.exe fails when reloaded", func() {
@@ -228,39 +205,13 @@ var _ = Describe("Envoy-Nginx", func() {
 	})
 
 	Context("bad nginx.exe", func() {
-		var (
-			envoyNginxBin string
-			err           error
-			binParentDir  string
-			nginxBin      string
-			sdsFile       string
-		)
-
 		BeforeEach(func() {
-			envoyNginxBin, err = gexec.Build("code.cloudfoundry.org/envoy-nginx")
-			Expect(err).ToNot(HaveOccurred())
-
-			binParentDir, err = ioutil.TempDir("", "envoy-nginx")
-			Expect(err).ToNot(HaveOccurred())
-
-			basename := filepath.Base(envoyNginxBin)
-			err = os.Rename(envoyNginxBin, filepath.Join(binParentDir, basename))
-			Expect(err).ToNot(HaveOccurred())
-			envoyNginxBin = filepath.Join(binParentDir, basename)
-
 			nginxBin, err = gexec.Build("code.cloudfoundry.org/envoy-nginx/fixtures/bad-nginx")
 			Expect(err).ToNot(HaveOccurred())
 
 			err = os.Rename(nginxBin, filepath.Join(binParentDir, "nginx.exe"))
 			Expect(err).ToNot(HaveOccurred())
 			nginxBin = filepath.Join(binParentDir, "nginx.exe")
-
-			sdsFd, err := ioutil.TempFile("", "sdsFile")
-			Expect(err).ToNot(HaveOccurred())
-			sdsFile = sdsFd.Name()
-			err = CopyFile(sdsFixture, sdsFile)
-			Expect(err).ToNot(HaveOccurred())
-			os.Setenv("SDS_FILE", sdsFile)
 		})
 
 		Context("when nginx.exe exits with error", func() {
