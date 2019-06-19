@@ -34,10 +34,6 @@ var _ = Describe("Nginx Config", func() {
 			envoyConfFile = "../fixtures/cf_assets_envoy_config/envoy.yaml"
 			sdsCredsFile = "../fixtures/cf_assets_envoy_config/sds-server-cert-and-key.yaml"
 
-			var err error
-			tmpdir, err = ioutil.TempDir("", "conf")
-			Expect(err).ShouldNot(HaveOccurred())
-
 			sdsCredParser = &fakes.SdsCredParser{}
 			sdsCredParser.GetCertAndKeyCall.Returns.Cert = "some-cert"
 			sdsCredParser.GetCertAndKeyCall.Returns.Key = "some-key"
@@ -49,17 +45,18 @@ var _ = Describe("Nginx Config", func() {
 				"1-service-cluster": "61002",
 				"2-service-cluster": "61003",
 			}
-
-			nginxConfig = parser.NewNginxConfig(envoyConfParser, sdsCredParser)
 		})
 
 		AfterEach(func() {
-			//os.RemoveAll(tmpdir)
+			os.RemoveAll(tmpdir)
 		})
 
 		Describe("Good configuration", func() {
 			BeforeEach(func() {
-				configFile, err = nginxConfig.Generate(envoyConfFile, sdsCredsFile, tmpdir)
+				tmpdir, err = ioutil.TempDir("", "conf")
+				Expect(err).ShouldNot(HaveOccurred())
+				nginxConfig = parser.NewNginxConfig(envoyConfParser, sdsCredParser, tmpdir)
+				configFile, err = nginxConfig.Generate(envoyConfFile, sdsCredsFile)
 				Expect(err).ShouldNot(HaveOccurred())
 				config, err = ioutil.ReadFile(configFile)
 				Expect(err).ShouldNot(HaveOccurred())
@@ -161,6 +158,12 @@ var _ = Describe("Nginx Config", func() {
 		})
 
 		Describe("Bad configuration", func() {
+			BeforeEach(func() {
+				tmpdir, err = ioutil.TempDir("", "conf")
+				Expect(err).ShouldNot(HaveOccurred())
+				nginxConfig = parser.NewNginxConfig(envoyConfParser, sdsCredParser, tmpdir)
+			})
+
 			Context("when a listener port is missing for a cluster name", func() {
 				BeforeEach(func() {
 					envoyConfParser.GetClustersCall.Returns.Clusters = []parser.Cluster{{Name: "banana"}}
@@ -168,7 +171,7 @@ var _ = Describe("Nginx Config", func() {
 				})
 
 				It("should return a custom error", func() {
-					_, err := nginxConfig.Generate(envoyConfFile, sdsCredsFile, tmpdir)
+					_, err := nginxConfig.Generate(envoyConfFile, sdsCredsFile)
 					Expect(err).To(MatchError("port is missing for cluster name banana"))
 				})
 			})
@@ -179,18 +182,21 @@ var _ = Describe("Nginx Config", func() {
 				})
 
 				It("returns a helpful error message", func() {
-					_, err := nginxConfig.Generate(envoyConfFile, sdsCredsFile, tmpdir)
+					_, err := nginxConfig.Generate(envoyConfFile, sdsCredsFile)
 					Expect(err).To(MatchError("Failed to get cert and key from sds file: banana"))
 				})
 			})
 		})
 
 		Context("when ioutil fails to write the envoy_nginx.conf", func() {
+			BeforeEach(func() {
+				nginxConfig = parser.NewNginxConfig(envoyConfParser, sdsCredParser, "not-a-real-dir")
+			})
 			// We do not test that ioutil.WriteFile fails for cert/key because
 			// our trick to cause that function to fail only works once!
 			// The trick is to pass a directory that isn't real.
 			It("returns a helpful error message", func() {
-				_, err := nginxConfig.Generate(envoyConfFile, sdsCredsFile, "not-a-real-dir")
+				_, err := nginxConfig.Generate(envoyConfFile, sdsCredsFile)
 				Expect(err.Error()).To(ContainSubstring("Failed to write envoy_nginx.conf:"))
 			})
 		})

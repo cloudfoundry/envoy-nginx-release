@@ -17,14 +17,14 @@ import (
 var _ = Describe("Envoy-Nginx", func() {
 	Context("when nginx.exe is present in the same directory", func() {
 		var (
-			envoyNginxBin   string
-			err             error
-			binParentDir    string
-			nginxBin        string
-			args            []string
-			outputDirectory string
-			session         *gexec.Session
-			sdsFile         string
+			envoyNginxBin string
+			err           error
+			binParentDir  string
+			nginxBin      string
+			args          []string
+			confDir       string
+			session       *gexec.Session
+			sdsFile       string
 		)
 
 		BeforeEach(func() {
@@ -69,7 +69,7 @@ var _ = Describe("Envoy-Nginx", func() {
 			* There's a risk that if we get it wrong, we end up deleting
 			* some random directory on our filesystem.
 			 */
-			outputDirectory = strings.TrimSpace(args[4])
+			confDir = strings.TrimSpace(args[4])
 		})
 
 		Context("when the sds file is rotated", func() {
@@ -89,8 +89,8 @@ var _ = Describe("Envoy-Nginx", func() {
 <<NEW EXPECTED KEY>>
 -----END RSA PRIVATE KEY-----
 `
-				certFile := filepath.Join(outputDirectory, "cert.pem")
-				keyFile := filepath.Join(outputDirectory, "key.pem")
+				certFile := filepath.Join(confDir, "cert.pem")
+				keyFile := filepath.Join(confDir, "key.pem")
 
 				currentCert, err := ioutil.ReadFile(string(certFile))
 				Expect(err).ShouldNot(HaveOccurred())
@@ -113,11 +113,11 @@ var _ = Describe("Envoy-Nginx", func() {
 
 			Expect(strings.TrimSpace(args[3])).To(Equal("-p"))
 
-			Expect(outputDirectory).ToNot(BeEmpty())
+			Expect(confDir).ToNot(BeEmpty())
 		})
 
 		It("creates the right files in the output directory", func() {
-			files, err := ioutil.ReadDir(outputDirectory)
+			files, err := ioutil.ReadDir(confDir)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(len(files)).To(Equal(3))
 
@@ -150,8 +150,8 @@ var _ = Describe("Envoy-Nginx", func() {
 <<EXPECTED KEY>>
 -----END RSA PRIVATE KEY-----
 `
-			certFile := filepath.Join(outputDirectory, "cert.pem")
-			keyFile := filepath.Join(outputDirectory, "key.pem")
+			certFile := filepath.Join(confDir, "cert.pem")
+			keyFile := filepath.Join(confDir, "key.pem")
 
 			currentCert, err := ioutil.ReadFile(string(certFile))
 			Expect(err).ShouldNot(HaveOccurred())
@@ -165,7 +165,7 @@ var _ = Describe("Envoy-Nginx", func() {
 
 		AfterEach(func() {
 			os.RemoveAll(binParentDir)
-			os.RemoveAll(outputDirectory)
+			os.RemoveAll(confDir)
 		})
 	})
 

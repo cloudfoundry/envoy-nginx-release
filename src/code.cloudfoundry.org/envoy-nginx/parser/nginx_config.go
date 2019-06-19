@@ -26,13 +26,31 @@ type sdsCredParser interface {
 type NginxConfig struct {
 	envoyConfParser envoyConfParser
 	sdsCredParser   sdsCredParser
+	confDir         string
+	confFile        string
+	certFile        string
+	keyFile         string
+	pidFile         string
 }
 
-func NewNginxConfig(envoyConfParser envoyConfParser, sdsCredParser sdsCredParser) NginxConfig {
+func NewNginxConfig(envoyConfParser envoyConfParser, sdsCredParser sdsCredParser, confDir string) NginxConfig {
 	return NginxConfig{
 		envoyConfParser: envoyConfParser,
 		sdsCredParser:   sdsCredParser,
+		confDir:         confDir,
+		confFile:        filepath.Join(confDir, "envoy_nginx.conf"),
+		certFile:        filepath.Join(confDir, "cert.pem"),
+		keyFile:         filepath.Join(confDir, "key.pem"),
+		pidFile:         filepath.Join(confDir, "nginx.pid"),
 	}
+}
+
+func (n NginxConfig) GetConfDir() string {
+	return n.confDir
+}
+
+func (n NginxConfig) GetConfFile() string {
+	return n.confFile
 }
 
 /* Convert windows paths to unix paths */
@@ -45,12 +63,7 @@ func convertToUnixPath(path string) string {
 /* Generates NGINX config file.
  *  There's aleady an nginx.conf in the blob but it's just a placeholder.
  */
-func (n NginxConfig) Generate(envoyConfFile, sdsFile, outputDirectory string) (string, error) {
-	confFile := filepath.Join(outputDirectory, "envoy_nginx.conf")
-	certFile := filepath.Join(outputDirectory, "cert.pem")
-	keyFile := filepath.Join(outputDirectory, "key.pem")
-	pidFile := filepath.Join(outputDirectory, "nginx.pid")
-
+func (n NginxConfig) Generate(envoyConfFile, sdsFile string) (string, error) {
 	clusters, nameToPortMap, err := n.envoyConfParser.GetClusters(envoyConfFile)
 	if err != nil {
 		return "", err
@@ -74,8 +87,8 @@ func (n NginxConfig) Generate(envoyConfFile, sdsFile, outputDirectory string) (s
 	//Create a new template and parse the conf template into it
 	t := template.Must(template.New("baseTemplate").Parse(baseTemplate))
 
-	unixCert := convertToUnixPath(certFile)
-	unixKey := convertToUnixPath(keyFile)
+	unixCert := convertToUnixPath(n.certFile)
+	unixKey := convertToUnixPath(n.keyFile)
 
 	//Execute the template for each socket address
 	for _, c := range clusters {
@@ -114,28 +127,37 @@ events {
 stream {
 	%s
 }
-`, convertToUnixPath(pidFile),
+`, convertToUnixPath(n.pidFile),
 		out)
 
-	cert, key, err := n.sdsCredParser.GetCertAndKey(sdsFile)
-	if err != nil {
-		return "", fmt.Errorf("Failed to get cert and key from sds file: %s", err)
-	}
-
-	err = ioutil.WriteFile(confFile, []byte(confTemplate), FilePerm)
+	err = ioutil.WriteFile(n.confFile, []byte(confTemplate), FilePerm)
 	if err != nil {
 		return "", fmt.Errorf("Failed to write envoy_nginx.conf: %s", err)
 	}
 
-	err = ioutil.WriteFile(certFile, []byte(cert), FilePerm)
+	err = n.WriteCertAndKey(sdsFile)
 	if err != nil {
-		return "", fmt.Errorf("Failed to write cert file: %s", err)
+		return "", err
 	}
 
-	err = ioutil.WriteFile(keyFile, []byte(key), FilePerm)
+	return n.confFile, nil
+}
+
+func (n NginxConfig) WriteCertAndKey(sdsFile string) error {
+	cert, key, err := n.sdsCredParser.GetCertAndKey(sdsFile)
 	if err != nil {
-		return "", fmt.Errorf("Failed to write key file: %s", err)
+		return fmt.Errorf("Failed to get cert and key from sds file: %s", err)
 	}
 
-	return confFile, nil
+	err = ioutil.WriteFile(n.certFile, []byte(cert), FilePerm)
+	if err != nil {
+		return fmt.Errorf("Failed to write cert file: %s", err)
+	}
+
+	err = ioutil.WriteFile(n.keyFile, []byte(key), FilePerm)
+	if err != nil {
+		return fmt.Errorf("Failed to write key file: %s", err)
+	}
+
+	return nil
 }
