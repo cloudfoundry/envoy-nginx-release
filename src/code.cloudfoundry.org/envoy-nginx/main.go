@@ -16,6 +16,7 @@ const DefaultEnvoyConfFile = "C:\\etc\\cf-assets\\envoy_config\\envoy.yaml"
 const DefaultSDSCredsFile = "C:\\etc\\cf-assets\\envoy_config\\sds-server-cert-and-key.yaml"
 
 func main() {
+	log.SetOutput(os.Stdout)
 	log.Println("envoy.exe: Starting executable")
 	// locate nginx.exe in the same directory as the running executable
 	mypath, err := os.Executable()
@@ -66,9 +67,10 @@ func main() {
 	* They publish errors (if any) to this error channel
 	 */
 	errorChan := make(chan error)
+	readyChan := make(chan bool)
 
 	go func() {
-		errorChan <- WatchFile(sdsFile, func() error {
+		errorChan <- WatchFile(sdsFile, readyChan, func() error {
 			log.Printf("envoy.exe: detected change in sdsfile (%s)\n", sdsFile)
 			sdsFd, err := os.Stat(sdsFile)
 			if err != nil {
@@ -86,6 +88,7 @@ func main() {
 	}()
 
 	go func() {
+		<-readyChan
 		errorChan <- executeNginx(nginxBin, nginxConf, outputDirectory)
 	}()
 

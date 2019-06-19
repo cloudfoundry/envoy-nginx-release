@@ -6,7 +6,8 @@ import (
 	fsnotify "github.com/fsnotify/fsnotify"
 )
 
-func WatchFile(filepath string, callback func() error) error {
+/* readyChan tell when the watcher is ready */
+func WatchFile(filepath string, readyChan chan bool, callback func() error) error {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		return err
@@ -54,6 +55,7 @@ func WatchFile(filepath string, callback func() error) error {
 	if err != nil {
 		return err
 	}
+	readyChan <- true
 
 	return <-watcherErr
 }

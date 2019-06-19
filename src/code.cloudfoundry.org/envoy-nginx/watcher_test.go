@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"os"
 
 	. "code.cloudfoundry.org/envoy-nginx/testhelpers"
@@ -29,20 +30,21 @@ var _ = Describe("Watcher", func() {
 
 		It("Changes to the file must be detected every time", func() {
 			ch := make(chan string)
+			readyChan := make(chan bool)
 
 			err = ioutil.WriteFile(watchmeFile, []byte("Heyy"), 0666)
 			Expect(err).ToNot(HaveOccurred())
 
-			/* I'm watchin U */
 			go func() {
-				WatchFile(watchmeFile, func() error {
-					fmt.Println("WATCHER_FUNCTION_CALLED")
+				WatchFile(watchmeFile, readyChan, func() error {
 					ch <- "message"
 					return nil
 				})
 			}()
 
-			err = ioutil.WriteFile(newFile, []byte("Hello"), 0666)
+			<-readyChan
+			content := fmt.Sprintf("Hello-%d\n", rand.Intn(1000))
+			err = ioutil.WriteFile(newFile, []byte(content), 0666)
 			Expect(err).ToNot(HaveOccurred())
 			RotateCert(newFile, watchmeFile)
 
