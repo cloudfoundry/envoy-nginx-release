@@ -52,13 +52,7 @@ func main() {
 	// generate config
 	envoyConfParser := parser.NewEnvoyConfParser()
 	sdsCredParser := parser.NewSdsCredParser()
-	nginxConfig := parser.NewNginxConfig(envoyConfParser, sdsCredParser)
-	err = nginxConfig.Generate(envoyConfFile, sdsFile, outputDirectory)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	nginxConf := filepath.Join(outputDirectory, "envoy_nginx.conf")
+	nginxConfParser := parser.NewNginxConfig(envoyConfParser, sdsCredParser)
 
 	/*
 	* The idea here is that the main line of execution waits for any errors
@@ -83,13 +77,13 @@ func main() {
 				log.Printf("envoy.exe: detected change in sdsfile (%s) was a false alarm. NOOP.\n", sdsFile)
 				return nil
 			}
-			return reloadNginx(nginxBin, nginxConf, sdsFile, outputDirectory, envoyConfFile, nginxConfig)
+			return reloadNginx(nginxBin, sdsFile, outputDirectory, envoyConfFile, nginxConfParser)
 		})
 	}()
 
 	go func() {
 		<-readyChan
-		errorChan <- executeNginx(nginxBin, nginxConf, outputDirectory)
+		errorChan <- executeNginx(nginxBin, sdsFile, outputDirectory, envoyConfFile, nginxConfParser)
 	}()
 
 	err = <-errorChan
@@ -98,9 +92,9 @@ func main() {
 	}
 }
 
-func reloadNginx(nginxBin, nginxConfFile, sdsFile, outputDir, envoyConfFile string, nginxConfig parser.NginxConfig) error {
+func reloadNginx(nginxBin, sdsFile, outputDir, envoyConfFile string, nginxConfParser parser.NginxConfig) error {
 	log.Println("envoy.exe: about to reload nginx")
-	err := nginxConfig.Generate(envoyConfFile, sdsFile, outputDir)
+	nginxConf, err := nginxConfParser.Generate(envoyConfFile, sdsFile, outputDir)
 	if err != nil {
 		return err
 	}
@@ -110,16 +104,20 @@ func reloadNginx(nginxBin, nginxConfFile, sdsFile, outputDir, envoyConfFile stri
 	* we use (as of date) is wired during compilation to use "./conf/nginx.conf" as
 	 */
 	log.Println("envoy.exe: about to issue -s reload")
-	log.Println("envoy.exe: Executing:", nginxBin, "-c", nginxConfFile, "-p", outputDir, "-s", "reload")
-	c := exec.Command(nginxBin, "-c", nginxConfFile, "-p", outputDir, "-s", "reload")
+	log.Println("envoy.exe: Executing:", nginxBin, "-c", nginxConf, "-p", outputDir, "-s", "reload")
+	c := exec.Command(nginxBin, "-c", nginxConf, "-p", outputDir, "-s", "reload")
 	c.Stdout = os.Stdout
 	c.Stderr = os.Stderr
 	return c.Run()
 }
 
-func executeNginx(nginxBin, nginxConfFile, outputDir string) error {
-	log.Println("envoy.exe: Executing:", nginxBin, "-c", nginxConfFile, "-p", outputDir)
-	c := exec.Command(nginxBin, "-c", nginxConfFile, "-p", outputDir)
+func executeNginx(nginxBin, sdsFile, outputDir, envoyConfFile string, nginxConfParser parser.NginxConfig) error {
+	nginxConf, err := nginxConfParser.Generate(envoyConfFile, sdsFile, outputDir)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Println("envoy.exe: Executing:", nginxBin, "-c", nginxConf, "-p", outputDir)
+	c := exec.Command(nginxBin, "-c", nginxConf, "-p", outputDir)
 	c.Stdout = os.Stdout
 	c.Stderr = os.Stderr
 	return c.Run()

@@ -45,7 +45,7 @@ func convertToUnixPath(path string) string {
 /* Generates NGINX config file.
  *  There's aleady an nginx.conf in the blob but it's just a placeholder.
  */
-func (n NginxConfig) Generate(envoyConfFile, sdsFile, outputDirectory string) error {
+func (n NginxConfig) Generate(envoyConfFile, sdsFile, outputDirectory string) (string, error) {
 	confFile := filepath.Join(outputDirectory, "envoy_nginx.conf")
 	certFile := filepath.Join(outputDirectory, "cert.pem")
 	keyFile := filepath.Join(outputDirectory, "key.pem")
@@ -53,7 +53,7 @@ func (n NginxConfig) Generate(envoyConfFile, sdsFile, outputDirectory string) er
 
 	clusters, nameToPortMap, err := n.envoyConfParser.GetClusters(envoyConfFile)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	const baseTemplate = `
@@ -81,7 +81,7 @@ func (n NginxConfig) Generate(envoyConfFile, sdsFile, outputDirectory string) er
 	for _, c := range clusters {
 		listenerPort, exists := nameToPortMap[c.Name]
 		if !exists {
-			return fmt.Errorf("port is missing for cluster name %s", c.Name)
+			return "", fmt.Errorf("port is missing for cluster name %s", c.Name)
 		}
 
 		bts := BaseTemplate{
@@ -95,7 +95,7 @@ func (n NginxConfig) Generate(envoyConfFile, sdsFile, outputDirectory string) er
 
 		err = t.Execute(out, bts)
 		if err != nil {
-			return fmt.Errorf("Failed executing nginx config template: %s", err)
+			return "", fmt.Errorf("Failed executing nginx config template: %s", err)
 		}
 	}
 
@@ -119,23 +119,23 @@ stream {
 
 	cert, key, err := n.sdsCredParser.GetCertAndKey(sdsFile)
 	if err != nil {
-		return fmt.Errorf("Failed to get cert and key from sds file: %s", err)
+		return "", fmt.Errorf("Failed to get cert and key from sds file: %s", err)
 	}
 
 	err = ioutil.WriteFile(confFile, []byte(confTemplate), FilePerm)
 	if err != nil {
-		return fmt.Errorf("Failed to write envoy_nginx.conf: %s", err)
+		return "", fmt.Errorf("Failed to write envoy_nginx.conf: %s", err)
 	}
 
 	err = ioutil.WriteFile(certFile, []byte(cert), FilePerm)
 	if err != nil {
-		return fmt.Errorf("Failed to write cert file: %s", err)
+		return "", fmt.Errorf("Failed to write cert file: %s", err)
 	}
 
 	err = ioutil.WriteFile(keyFile, []byte(key), FilePerm)
 	if err != nil {
-		return fmt.Errorf("Failed to write key file: %s", err)
+		return "", fmt.Errorf("Failed to write key file: %s", err)
 	}
 
-	return nil
+	return confFile, nil
 }

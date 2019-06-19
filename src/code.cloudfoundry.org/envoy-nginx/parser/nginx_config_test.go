@@ -26,6 +26,7 @@ var _ = Describe("Nginx Config", func() {
 		envoyConfParser *fakes.EnvoyConfParser
 		nginxConfig     parser.NginxConfig
 		sdsCredParser   *fakes.SdsCredParser
+		err             error
 	)
 
 	Describe("Generate", func() {
@@ -53,15 +54,13 @@ var _ = Describe("Nginx Config", func() {
 		})
 
 		AfterEach(func() {
-			os.RemoveAll(tmpdir)
+			//os.RemoveAll(tmpdir)
 		})
 
 		Describe("Good configuration", func() {
 			BeforeEach(func() {
-				err := nginxConfig.Generate(envoyConfFile, sdsCredsFile, tmpdir)
+				configFile, err = nginxConfig.Generate(envoyConfFile, sdsCredsFile, tmpdir)
 				Expect(err).ShouldNot(HaveOccurred())
-
-				configFile = filepath.Join(tmpdir, "envoy_nginx.conf")
 				config, err = ioutil.ReadFile(configFile)
 				Expect(err).ShouldNot(HaveOccurred())
 			})
@@ -169,7 +168,7 @@ var _ = Describe("Nginx Config", func() {
 				})
 
 				It("should return a custom error", func() {
-					err := nginxConfig.Generate(envoyConfFile, sdsCredsFile, tmpdir)
+					_, err := nginxConfig.Generate(envoyConfFile, sdsCredsFile, tmpdir)
 					Expect(err).To(MatchError("port is missing for cluster name banana"))
 				})
 			})
@@ -180,7 +179,7 @@ var _ = Describe("Nginx Config", func() {
 				})
 
 				It("returns a helpful error message", func() {
-					err := nginxConfig.Generate(envoyConfFile, sdsCredsFile, tmpdir)
+					_, err := nginxConfig.Generate(envoyConfFile, sdsCredsFile, tmpdir)
 					Expect(err).To(MatchError("Failed to get cert and key from sds file: banana"))
 				})
 			})
@@ -191,7 +190,7 @@ var _ = Describe("Nginx Config", func() {
 			// our trick to cause that function to fail only works once!
 			// The trick is to pass a directory that isn't real.
 			It("returns a helpful error message", func() {
-				err := nginxConfig.Generate(envoyConfFile, sdsCredsFile, "not-a-real-dir")
+				_, err := nginxConfig.Generate(envoyConfFile, sdsCredsFile, "not-a-real-dir")
 				Expect(err.Error()).To(ContainSubstring("Failed to write envoy_nginx.conf:"))
 			})
 		})
