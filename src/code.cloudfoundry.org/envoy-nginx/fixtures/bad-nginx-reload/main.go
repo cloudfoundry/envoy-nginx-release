@@ -17,6 +17,5 @@ func main() {
 		}
 	}
 
-	// TODO: fix this, it could be a flake
 	time.Sleep(1 * time.Second)
 }

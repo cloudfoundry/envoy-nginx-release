@@ -44,6 +44,7 @@ var _ = Describe("Envoy-Nginx", func() {
 		os.Setenv("SDS_FILE", sdsFile)
 		os.Setenv("ENVOY_FILE", "fixtures/cf_assets_envoy_config/envoy.yaml")
 	})
+
 	Context("when nginx.exe is present in the same directory", func() {
 		var (
 			args    []string
@@ -68,12 +69,13 @@ var _ = Describe("Envoy-Nginx", func() {
 
 			Expect(len(args)).To(Equal(5))
 
-			/*
-			* TODO: see about cleaning up output directory.
-			* There's a risk that if we get it wrong, we end up deleting
-			* some random directory on our filesystem.
-			 */
-			confDir = strings.TrimSpace(args[4])
+			confDir = ""
+			for i, arg := range args {
+				if arg == "-p" && len(args) > i+1 {
+					confDir = strings.TrimSpace(args[i+1])
+				}
+			}
+			Expect(confDir).ToNot(BeEmpty())
 		})
 
 		Context("when the sds file is rotated", func() {
