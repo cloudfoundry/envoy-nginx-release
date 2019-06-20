@@ -1,6 +1,7 @@
 package main_test
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -38,6 +39,7 @@ var _ = Describe("Envoy-Nginx", func() {
 		sdsFd, err := ioutil.TempFile("", "sdsFile")
 		Expect(err).ToNot(HaveOccurred())
 		sdsFile = sdsFd.Name()
+		sdsFd.Close()
 		err = CopyFile(sdsFixture, sdsFile)
 		Expect(err).ToNot(HaveOccurred())
 
@@ -82,8 +84,9 @@ var _ = Describe("Envoy-Nginx", func() {
 			It("rewrites the cert and key file and reloads nginx", func() {
 				err := RotateCert("fixtures/cf_assets_envoy_config/sds-server-cert-and-key-rotated.yaml", sdsFile)
 				Expect(err).ToNot(HaveOccurred())
-				Eventually(session.Out).Should(gbytes.Say("-s,reload"))
 
+				nginxConf := strings.Replace(filepath.Join(confDir, "envoy_nginx.conf"), `\`, `\\`, -1)
+				Eventually(session.Out).Should(gbytes.Say(fmt.Sprintf("-c,%s,-p,%s,-s,reload", nginxConf, strings.Replace(confDir, `\`, `\\`, -1))))
 				expectedCert := `-----BEGIN CERTIFICATE-----
 <<NEW EXPECTED CERT 1>>
 -----END CERTIFICATE-----

@@ -23,12 +23,13 @@ var _ = Describe("Watcher", func() {
 			watchmeFd, err := ioutil.TempFile("", "watchme")
 			Expect(err).ToNot(HaveOccurred())
 			watchmeFile = watchmeFd.Name()
+			watchmeFd.Close()
 			newFileFd, err := ioutil.TempFile("", "new-file")
 			Expect(err).ToNot(HaveOccurred())
 			newFile = newFileFd.Name()
 		})
 
-		It("Changes to the file must be detected every time", func() {
+		It("detects changes to the file and executes the callback", func() {
 			ch := make(chan string)
 			readyChan := make(chan bool)
 

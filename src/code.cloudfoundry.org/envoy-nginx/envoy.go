@@ -78,7 +78,7 @@ func envoy(envoyConf string) {
 
 	go func() {
 		<-readyChan
-		errorChan <- executeNginx(nginxBin, sdsFile, nginxConfParser, envoyConf)
+		errorChan <- startNginx(nginxBin, sdsFile, nginxConfParser, envoyConf)
 	}()
 
 	err = <-errorChan
@@ -108,7 +108,7 @@ func reloadNginx(nginxBin, sdsFile string, nginxConfParser parser.NginxConfig) e
 	return c.Run()
 }
 
-func executeNginx(nginxBin, sdsFile string, nginxConfParser parser.NginxConfig, envoyConf string) error {
+func startNginx(nginxBin, sdsFile string, nginxConfParser parser.NginxConfig, envoyConf string) error {
 	confFile, err := nginxConfParser.Generate(envoyConf, sdsFile)
 	if err != nil {
 		log.Fatal(err)

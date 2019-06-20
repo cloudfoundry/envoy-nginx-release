@@ -30,7 +30,7 @@ func WatchFile(filepath string, readyChan chan bool, callback func() error) erro
 					event.Op&fsnotify.Chmod == fsnotify.Chmod {
 
 					/*
-					* It is important to re-add because though the filepath has changed it's a new file
+					* It is important to re-add because though the filepath hasn't changed it's a new file
 					* Maybe it watches the inode or something
 					 */
 					watcher.Add(filepath)
