@@ -29,11 +29,13 @@ func envoy(envoyConf string) {
 	}
 
 	// We use ENVOY_FILE for our test
+	// TODO: depending on what we hear from Diego, get the path to envoy.yaml from the arguments
 	if overrideEnvoyConf := os.Getenv("ENVOY_FILE"); overrideEnvoyConf != "" {
 		envoyConf = overrideEnvoyConf
 	}
 
 	// We use SDS_FILE for our tests
+	// TODO: can we assume that the sds file will always be in the same directory as the envoy.yaml?
 	sdsFile := os.Getenv("SDS_FILE")
 	if sdsFile == "" {
 		sdsFile = DefaultSDSCredsFile

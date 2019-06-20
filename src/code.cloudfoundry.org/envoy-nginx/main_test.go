@@ -62,6 +62,7 @@ var _ = Describe("Envoy-Nginx", func() {
 			Expect(err).ToNot(HaveOccurred())
 			nginxBin = filepath.Join(binParentDir, "nginx.exe")
 
+			// TODO: pass the right arguments
 			session, err = Start(exec.Command(envoyNginxBin))
 			Expect(err).ToNot(HaveOccurred())
 
