@@ -12,7 +12,7 @@ import (
 const FilePerm = 0644
 
 type BaseTemplate struct {
-	UpstreamAddress, UpstreamPort, ListenerPort, Name, Key, Cert string
+	UpstreamAddress, UpstreamPort, ListenerPort, Name, Key, Cert, TrustedCA string
 }
 
 type envoyConfParser interface {
@@ -23,25 +23,33 @@ type sdsCredParser interface {
 	GetCertAndKey(sdsFile string) (string, string, error)
 }
 
-type NginxConfig struct {
-	envoyConfParser envoyConfParser
-	sdsCredParser   sdsCredParser
-	confDir         string
-	confFile        string
-	certFile        string
-	keyFile         string
-	pidFile         string
+type sdsValidationParser interface {
+	GetCACert(sdsFile string) (string, error)
 }
 
-func NewNginxConfig(envoyConfParser envoyConfParser, sdsCredParser sdsCredParser, confDir string) NginxConfig {
+type NginxConfig struct {
+	envoyConfParser     envoyConfParser
+	sdsCredParser       sdsCredParser
+	sdsValidationParser sdsValidationParser
+	confDir             string
+	confFile            string
+	certFile            string
+	keyFile             string
+	trustedCAFile       string
+	pidFile             string
+}
+
+func NewNginxConfig(envoyConfParser envoyConfParser, sdsCredParser sdsCredParser, sdsValidationParser sdsValidationParser, confDir string) NginxConfig {
 	return NginxConfig{
-		envoyConfParser: envoyConfParser,
-		sdsCredParser:   sdsCredParser,
-		confDir:         confDir,
-		confFile:        filepath.Join(confDir, "envoy_nginx.conf"),
-		certFile:        filepath.Join(confDir, "cert.pem"),
-		keyFile:         filepath.Join(confDir, "key.pem"),
-		pidFile:         filepath.Join(confDir, "nginx.pid"),
+		envoyConfParser:     envoyConfParser,
+		sdsCredParser:       sdsCredParser,
+		sdsValidationParser: sdsValidationParser,
+		confDir:             confDir,
+		confFile:            filepath.Join(confDir, "envoy_nginx.conf"),
+		certFile:            filepath.Join(confDir, "cert.pem"),
+		keyFile:             filepath.Join(confDir, "key.pem"),
+		trustedCAFile:       filepath.Join(confDir, "ca.pem"),
+		pidFile:             filepath.Join(confDir, "nginx.pid"),
 	}
 }
 
@@ -63,7 +71,7 @@ func convertToUnixPath(path string) string {
 /* Generates NGINX config file.
  *  There's aleady an nginx.conf in the blob but it's just a placeholder.
  */
-func (n NginxConfig) Generate(envoyConfFile, sdsFile string) (string, error) {
+func (n NginxConfig) Generate(envoyConfFile string) (string, error) {
 	clusters, nameToPortMap, err := n.envoyConfParser.GetClusters(envoyConfFile)
 	if err != nil {
 		return "", err
@@ -76,8 +84,10 @@ func (n NginxConfig) Generate(envoyConfFile, sdsFile string) (string, error) {
 
     server {
         listen {{.ListenerPort}} ssl;
-        ssl_certificate      {{.Cert}};
-        ssl_certificate_key  {{.Key}};
+        ssl_certificate        {{.Cert}};
+        ssl_certificate_key    {{.Key}};
+        ssl_client_certificate {{.TrustedCA}};
+        ssl_verify_client on;
         proxy_pass {{.Name}};
     }
 	`
@@ -89,6 +99,7 @@ func (n NginxConfig) Generate(envoyConfFile, sdsFile string) (string, error) {
 
 	unixCert := convertToUnixPath(n.certFile)
 	unixKey := convertToUnixPath(n.keyFile)
+	unixCA := convertToUnixPath(n.trustedCAFile)
 
 	//Execute the template for each socket address
 	for _, c := range clusters {
@@ -103,6 +114,7 @@ func (n NginxConfig) Generate(envoyConfFile, sdsFile string) (string, error) {
 			UpstreamPort:    c.Hosts[0].SocketAddress.PortValue,
 			Cert:            unixCert,
 			Key:             unixKey,
+			TrustedCA:       unixCA,
 			ListenerPort:    listenerPort,
 		}
 
@@ -114,9 +126,8 @@ func (n NginxConfig) Generate(envoyConfFile, sdsFile string) (string, error) {
 
 	confTemplate := fmt.Sprintf(`
 worker_processes  1;
-daemon on;
 
-error_log stderr;
+error_log stderr debug;
 pid %s;
 
 events {
@@ -135,16 +146,11 @@ stream {
 		return "", fmt.Errorf("Failed to write envoy_nginx.conf: %s", err)
 	}
 
-	err = n.WriteCertAndKey(sdsFile)
-	if err != nil {
-		return "", err
-	}
-
 	return n.confFile, nil
 }
 
-func (n NginxConfig) WriteCertAndKey(sdsFile string) error {
-	cert, key, err := n.sdsCredParser.GetCertAndKey(sdsFile)
+func (n NginxConfig) WriteTLSFiles(sdsCredsFile, sdsValidationFile string) error {
+	cert, key, err := n.sdsCredParser.GetCertAndKey(sdsCredsFile)
 	if err != nil {
 		return fmt.Errorf("Failed to get cert and key from sds file: %s", err)
 	}
@@ -157,6 +163,16 @@ func (n NginxConfig) WriteCertAndKey(sdsFile string) error {
 	err = ioutil.WriteFile(n.keyFile, []byte(key), FilePerm)
 	if err != nil {
 		return fmt.Errorf("Failed to write key file: %s", err)
+	}
+
+	caCert, err := n.sdsValidationParser.GetCACert(sdsValidationFile)
+	if err != nil {
+		return fmt.Errorf("Failed to get ca cert from sds server validation context file: %s", err)
+	}
+
+	err = ioutil.WriteFile(n.trustedCAFile, []byte(caCert), FilePerm)
+	if err != nil {
+		return fmt.Errorf("Failed to write ca cert file: %s", err)
 	}
 
 	return nil
