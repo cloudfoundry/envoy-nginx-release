@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
-	"math/rand"
 	"os"
 
 	. "code.cloudfoundry.org/envoy-nginx/testhelpers"
@@ -29,7 +28,7 @@ var _ = Describe("Watcher", func() {
 			newFile = newFileFd.Name()
 		})
 
-		It("detects changes to the file and executes the callback", func() {
+		It("detects changes to the file and executes the callback, repeatedly", func() {
 			ch := make(chan string)
 			readyChan := make(chan bool)
 
@@ -44,14 +43,18 @@ var _ = Describe("Watcher", func() {
 			}()
 
 			<-readyChan
-			content := fmt.Sprintf("Hello-%d\n", rand.Intn(1000))
-			err = ioutil.WriteFile(newFile, []byte(content), 0666)
-			Expect(err).ToNot(HaveOccurred())
-			RotateCert(newFile, watchmeFile)
 
-			var str string
-			Eventually(ch, "10s").Should(Receive(&str))
-			Expect(str).Should(Equal("message"))
+			for i := 0; i <= 3; i++ {
+				content := fmt.Sprintf("Hello-%d\n", i)
+				err = ioutil.WriteFile(newFile, []byte(content), 0666)
+				Expect(err).ToNot(HaveOccurred())
+				err = RotateCert(newFile, watchmeFile)
+				Expect(err).ToNot(HaveOccurred())
+
+				var str string
+				Eventually(ch, "10s").Should(Receive(&str))
+				Expect(str).Should(Equal("message"))
+			}
 		})
 
 		AfterEach(func() {
