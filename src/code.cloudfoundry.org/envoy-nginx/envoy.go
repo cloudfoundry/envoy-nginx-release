@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
@@ -11,6 +12,7 @@ import (
 )
 
 const DefaultSDSCredsFile = "C:\\etc\\cf-assets\\envoy_config\\sds-server-cert-and-key.yaml"
+const DefaultSDSServerValidationContextFile = "C:\\etc\\cf-assets\\envoy_config\\sds-server-validation-context.yaml"
 
 func envoy(envoyConf string) {
 	log.SetOutput(os.Stdout)
@@ -41,6 +43,12 @@ func envoy(envoyConf string) {
 		sdsFile = DefaultSDSCredsFile
 	}
 
+	// We use SDS_FILE for our tests
+	sdsValidationFile := os.Getenv("SDS_FILE")
+	if sdsValidationFile == "" {
+		sdsValidationFile = DefaultSDSServerValidationContextFile
+	}
+
 	confDir, err := ioutil.TempDir("", "nginx-conf")
 	if err != nil {
 		log.Fatal(err)
@@ -49,7 +57,8 @@ func envoy(envoyConf string) {
 	log.Println("envoy.exe: Generating conf")
 	envoyConfParser := parser.NewEnvoyConfParser()
 	sdsCredParser := parser.NewSdsCredParser()
-	nginxConfParser := parser.NewNginxConfig(envoyConfParser, sdsCredParser, confDir)
+	sdsValidationParser := parser.NewSdsServerValidationParser()
+	nginxConfParser := parser.NewNginxConfig(envoyConfParser, sdsCredParser, sdsValidationParser, confDir)
 
 	/*
 	* The idea here is that the main line of execution waits for any errors
@@ -74,13 +83,13 @@ func envoy(envoyConf string) {
 				log.Printf("envoy.exe: detected change in sdsfile (%s) was a false alarm. NOOP.\n", sdsFile)
 				return nil
 			}
-			return reloadNginx(nginxBin, sdsFile, nginxConfParser)
+			return reloadNginx(nginxBin, sdsFile, sdsValidationFile, nginxConfParser)
 		})
 	}()
 
 	go func() {
 		<-readyChan
-		errorChan <- startNginx(nginxBin, sdsFile, nginxConfParser, envoyConf)
+		errorChan <- startNginx(nginxBin, sdsFile, sdsValidationFile, nginxConfParser, envoyConf)
 	}()
 
 	err = <-errorChan
@@ -89,11 +98,12 @@ func envoy(envoyConf string) {
 	}
 }
 
-func reloadNginx(nginxBin, sdsFile string, nginxConfParser parser.NginxConfig) error {
+func reloadNginx(nginxBin, sdsFile, sdsValidationFile string, nginxConfParser parser.NginxConfig) error {
 	log.Println("envoy.exe: about to reload nginx")
-	err := nginxConfParser.WriteCertAndKey(sdsFile)
+
+	err := nginxConfParser.WriteTLSFiles(sdsFile, sdsValidationFile)
 	if err != nil {
-		return err
+		return fmt.Errorf("Failed to write tls files: %s", err)
 	}
 
 	confDir := nginxConfParser.GetConfDir()
@@ -110,13 +120,21 @@ func reloadNginx(nginxBin, sdsFile string, nginxConfParser parser.NginxConfig) e
 	return c.Run()
 }
 
-func startNginx(nginxBin, sdsFile string, nginxConfParser parser.NginxConfig, envoyConf string) error {
-	confFile, err := nginxConfParser.Generate(envoyConf, sdsFile)
+func startNginx(nginxBin, sdsCredsFile, sdsValidationFile string, nginxConfParser parser.NginxConfig, envoyConf string) error {
+	confFile, err := nginxConfParser.Generate(envoyConf)
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	err = nginxConfParser.WriteTLSFiles(sdsCredsFile, sdsValidationFile)
+	if err != nil {
+		return fmt.Errorf("Failed to write tls files: %s", err)
+	}
+
 	confDir := nginxConfParser.GetConfDir()
+
 	log.Println("envoy.exe: Executing:", nginxBin, "-c", confFile, "-p", confDir)
+
 	c := exec.Command(nginxBin, "-c", confFile, "-p", confDir)
 	c.Stdout = os.Stdout
 	c.Stderr = os.Stderr
