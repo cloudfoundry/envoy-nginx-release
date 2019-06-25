@@ -38,13 +38,13 @@ func envoy(envoyConf string) {
 
 	// We use SDS_FILE for our tests
 	// TODO: can we assume that the sds file will always be in the same directory as the envoy.yaml?
-	sdsFile := os.Getenv("SDS_FILE")
-	if sdsFile == "" {
-		sdsFile = DefaultSDSCredsFile
+	sdsCredsFile := os.Getenv("SDS_CREDS_FILE")
+	if sdsCredsFile == "" {
+		sdsCredsFile = DefaultSDSCredsFile
 	}
 
 	// We use SDS_FILE for our tests
-	sdsValidationFile := os.Getenv("SDS_FILE")
+	sdsValidationFile := os.Getenv("SDS_VALIDATION_FILE")
 	if sdsValidationFile == "" {
 		sdsValidationFile = DefaultSDSServerValidationContextFile
 	}
@@ -70,9 +70,9 @@ func envoy(envoyConf string) {
 	readyChan := make(chan bool)
 
 	go func() {
-		errorChan <- WatchFile(sdsFile, readyChan, func() error {
-			log.Printf("envoy.exe: detected change in sdsfile (%s)\n", sdsFile)
-			sdsFd, err := os.Stat(sdsFile)
+		errorChan <- WatchFile(sdsCredsFile, readyChan, func() error {
+			log.Printf("envoy.exe: detected change in sdsfile (%s)\n", sdsCredsFile)
+			sdsFd, err := os.Stat(sdsCredsFile)
 			if err != nil {
 				return err
 			}
@@ -80,16 +80,16 @@ func envoy(envoyConf string) {
 			* with one of the notifications reporting an empty file. NOOP in that case
 			 */
 			if sdsFd.Size() < 1 {
-				log.Printf("envoy.exe: detected change in sdsfile (%s) was a false alarm. NOOP.\n", sdsFile)
+				log.Printf("envoy.exe: detected change in sdsfile (%s) was a false alarm. NOOP.\n", sdsCredsFile)
 				return nil
 			}
-			return reloadNginx(nginxBin, sdsFile, sdsValidationFile, nginxConfParser)
+			return reloadNginx(nginxBin, sdsCredsFile, sdsValidationFile, nginxConfParser)
 		})
 	}()
 
 	go func() {
 		<-readyChan
-		errorChan <- startNginx(nginxBin, sdsFile, sdsValidationFile, nginxConfParser, envoyConf)
+		errorChan <- startNginx(nginxBin, sdsCredsFile, sdsValidationFile, nginxConfParser, envoyConf)
 	}()
 
 	err = <-errorChan
@@ -98,10 +98,10 @@ func envoy(envoyConf string) {
 	}
 }
 
-func reloadNginx(nginxBin, sdsFile, sdsValidationFile string, nginxConfParser parser.NginxConfig) error {
+func reloadNginx(nginxBin, sdsCredsFile, sdsValidationFile string, nginxConfParser parser.NginxConfig) error {
 	log.Println("envoy.exe: about to reload nginx")
 
-	err := nginxConfParser.WriteTLSFiles(sdsFile, sdsValidationFile)
+	err := nginxConfParser.WriteTLSFiles(sdsCredsFile, sdsValidationFile)
 	if err != nil {
 		return fmt.Errorf("Failed to write tls files: %s", err)
 	}

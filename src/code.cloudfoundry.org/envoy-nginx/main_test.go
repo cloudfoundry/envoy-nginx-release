@@ -15,13 +15,19 @@ import (
 	"github.com/onsi/gomega/gexec"
 )
 
+const (
+	SdsCredsFixture      = "fixtures/cf_assets_envoy_config/sds-server-cert-and-key.yaml"
+	SdsValidationFixture = "fixtures/cf_assets_envoy_config/sds-server-validation-context.yaml"
+)
+
 var _ = Describe("Envoy-Nginx", func() {
 	var (
-		envoyNginxBin string
-		err           error
-		binParentDir  string
-		nginxBin      string
-		sdsFile       string
+		envoyNginxBin     string
+		err               error
+		binParentDir      string
+		nginxBin          string
+		sdsCredsFile      string
+		sdsValidationFile string
 	)
 
 	BeforeEach(func() {
@@ -36,14 +42,22 @@ var _ = Describe("Envoy-Nginx", func() {
 		Expect(err).ToNot(HaveOccurred())
 		envoyNginxBin = filepath.Join(binParentDir, basename)
 
-		sdsFd, err := ioutil.TempFile("", "sdsFile")
+		sdsCreds, err := ioutil.TempFile("", "sdsCreds")
 		Expect(err).ToNot(HaveOccurred())
-		sdsFile = sdsFd.Name()
-		sdsFd.Close()
-		err = CopyFile(sdsFixture, sdsFile)
+		sdsCredsFile = sdsCreds.Name()
+		sdsCreds.Close()
+		err = CopyFile(SdsCredsFixture, sdsCredsFile)
 		Expect(err).ToNot(HaveOccurred())
 
-		os.Setenv("SDS_FILE", sdsFile)
+		sdsValidation, err := ioutil.TempFile("", "sdsValidation")
+		Expect(err).ToNot(HaveOccurred())
+		sdsValidationFile = sdsValidation.Name()
+		sdsValidation.Close()
+		err = CopyFile(SdsValidationFixture, sdsValidationFile)
+		Expect(err).ToNot(HaveOccurred())
+
+		os.Setenv("SDS_CREDS_FILE", sdsCredsFile)
+		os.Setenv("SDS_VALIDATION_FILE", sdsValidationFile)
 		os.Setenv("ENVOY_FILE", "fixtures/cf_assets_envoy_config/envoy.yaml")
 	})
 
@@ -83,7 +97,7 @@ var _ = Describe("Envoy-Nginx", func() {
 
 		Context("when the sds file is rotated", func() {
 			It("rewrites the cert and key file and reloads nginx", func() {
-				err := RotateCert("fixtures/cf_assets_envoy_config/sds-server-cert-and-key-rotated.yaml", sdsFile)
+				err := RotateCert("fixtures/cf_assets_envoy_config/sds-server-cert-and-key-rotated.yaml", sdsCredsFile)
 				Expect(err).ToNot(HaveOccurred())
 
 				nginxConf := strings.Replace(filepath.Join(confDir, "envoy_nginx.conf"), `\`, `\\`, -1)
@@ -205,7 +219,7 @@ var _ = Describe("Envoy-Nginx", func() {
 				Eventually(session.Out).Should(gbytes.Say(","))
 
 				By("simulating the cert/key rotation by diego")
-				err = RotateCert("fixtures/cf_assets_envoy_config/sds-server-cert-and-key-rotated.yaml", sdsFile)
+				err = RotateCert("fixtures/cf_assets_envoy_config/sds-server-cert-and-key-rotated.yaml", sdsCredsFile)
 				Expect(err).ToNot(HaveOccurred())
 				Eventually(session.Out).Should(gbytes.Say("-s,reload"))
 
