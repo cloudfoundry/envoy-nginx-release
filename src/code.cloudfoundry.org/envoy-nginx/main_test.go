@@ -143,30 +143,12 @@ var _ = Describe("Envoy-Nginx", func() {
 		It("creates the right files in the output directory", func() {
 			files, err := ioutil.ReadDir(confDir)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(len(files)).To(Equal(4))
 
-			var foundConf, foundCert, foundKey, foundCA bool
-
-			// TODO: files is an array with elements. Do single-line expect assertions.
+			names := []string{}
 			for _, file := range files {
-				if file.Name() == "envoy_nginx.conf" {
-					foundConf = true
-				}
-				if file.Name() == "cert.pem" {
-					foundCert = true
-				}
-				if file.Name() == "key.pem" {
-					foundKey = true
-				}
-				if file.Name() == "ca.pem" {
-					foundCA = true
-				}
+				names = append(names, file.Name())
 			}
-
-			Expect(foundConf).To(BeTrue())
-			Expect(foundCert).To(BeTrue())
-			Expect(foundKey).To(BeTrue())
-			Expect(foundCA).To(BeTrue())
+			Expect(names).To(ConsistOf("envoy_nginx.conf", "cert.pem", "key.pem", "ca.pem"))
 
 			expectedCert := `-----BEGIN CERTIFICATE-----
 <<EXPECTED CERT 1>>
@@ -206,7 +188,6 @@ var _ = Describe("Envoy-Nginx", func() {
 			err = os.Rename(nginxBin, filepath.Join(binParentDir, "nginx.exe"))
 			Expect(err).ToNot(HaveOccurred())
 			nginxBin = filepath.Join(binParentDir, "nginx.exe")
-
 		})
 
 		Context("when nginx.exe fails when reloaded", func() {
