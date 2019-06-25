@@ -23,7 +23,6 @@ const (
 var _ = Describe("Envoy-Nginx", func() {
 	var (
 		envoyNginxBin     string
-		err               error
 		binParentDir      string
 		nginxBin          string
 		sdsCredsFile      string
@@ -31,6 +30,7 @@ var _ = Describe("Envoy-Nginx", func() {
 	)
 
 	BeforeEach(func() {
+		var err error
 		envoyNginxBin, err = gexec.Build("code.cloudfoundry.org/envoy-nginx")
 		Expect(err).ToNot(HaveOccurred())
 
@@ -69,6 +69,7 @@ var _ = Describe("Envoy-Nginx", func() {
 		)
 
 		BeforeEach(func() {
+			var err error
 			nginxBin, err = gexec.Build("code.cloudfoundry.org/envoy-nginx/fixtures/nginx")
 			Expect(err).ToNot(HaveOccurred())
 
@@ -125,14 +126,13 @@ var _ = Describe("Envoy-Nginx", func() {
 				Expect(string(currentCert)).To(Equal(expectedCert))
 				Expect(string(currentKey)).To(Equal(expectedKey))
 			})
-
 		})
 
 		It("calls nginx with the right arguments", func() {
 			Expect(strings.TrimSpace(args[1])).To(Equal("-c"))
 
 			nginxConf := strings.TrimSpace(args[2])
-			_, err = os.Stat(nginxConf)
+			_, err := os.Stat(nginxConf)
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(strings.TrimSpace(args[3])).To(Equal("-p"))
@@ -182,6 +182,7 @@ var _ = Describe("Envoy-Nginx", func() {
 
 	Context("nginx.exe fails when reloaded", func() {
 		BeforeEach(func() {
+			var err error
 			nginxBin, err = gexec.Build("code.cloudfoundry.org/envoy-nginx/fixtures/bad-nginx-reload")
 			Expect(err).ToNot(HaveOccurred())
 
@@ -212,11 +213,13 @@ var _ = Describe("Envoy-Nginx", func() {
 
 	Context("bad nginx.exe", func() {
 		BeforeEach(func() {
+			var err error
 			nginxBin, err = gexec.Build("code.cloudfoundry.org/envoy-nginx/fixtures/bad-nginx")
 			Expect(err).ToNot(HaveOccurred())
 
 			err = os.Rename(nginxBin, filepath.Join(binParentDir, "nginx.exe"))
 			Expect(err).ToNot(HaveOccurred())
+
 			nginxBin = filepath.Join(binParentDir, "nginx.exe")
 		})
 
@@ -232,10 +235,10 @@ var _ = Describe("Envoy-Nginx", func() {
 		var (
 			aloneBin       string
 			aloneParentDir string
-			err            error
 		)
 
 		BeforeEach(func() {
+			var err error
 			aloneBin, err = gexec.Build("code.cloudfoundry.org/envoy-nginx")
 			Expect(err).ToNot(HaveOccurred())
 
@@ -243,14 +246,14 @@ var _ = Describe("Envoy-Nginx", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			basename := filepath.Base(aloneBin)
-			os.Rename(aloneBin, filepath.Join(aloneParentDir, basename))
+			err = os.Rename(aloneBin, filepath.Join(aloneParentDir, basename))
 			Expect(err).ToNot(HaveOccurred())
 
 			aloneBin = filepath.Join(aloneParentDir, basename)
 		})
 
 		It("errors", func() {
-			_, _, err = Execute(exec.Command(aloneBin))
+			_, _, err := Execute(exec.Command(aloneBin))
 			Expect(err).To(HaveOccurred())
 		})
 
