@@ -1,13 +1,13 @@
 package main_test
 
 import (
-	"testing"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+
+	"testing"
 )
 
-func TestEnvoyNginx(t *testing.T) {
+func TestWatcher(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "EnvoyNginx Suite")
+	RunSpecs(t, "Watcher Suite")
 }
