@@ -66,6 +66,7 @@ var _ = Describe("Acceptance", func() {
 		Expect(err).NotTo(HaveOccurred())
 		err = os.Remove(sdsValidationFile)
 		Expect(err).NotTo(HaveOccurred())
+		gexec.CleanupBuildArtifacts()
 		err = os.RemoveAll(binParentDir)
 		Expect(err).NotTo(HaveOccurred())
 	})
