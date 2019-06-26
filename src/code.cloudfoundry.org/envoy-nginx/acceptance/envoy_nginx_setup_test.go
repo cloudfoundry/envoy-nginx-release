@@ -107,6 +107,8 @@ var _ = Describe("Acceptance", func() {
 		})
 
 		AfterEach(func() {
+			session.Terminate()
+
 			err := os.RemoveAll(confDir)
 			Expect(err).NotTo(HaveOccurred())
 		})
