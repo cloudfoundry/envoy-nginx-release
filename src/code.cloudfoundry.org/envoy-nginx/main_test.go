@@ -42,23 +42,30 @@ var _ = Describe("Envoy-Nginx", func() {
 		Expect(err).ToNot(HaveOccurred())
 		envoyNginxBin = filepath.Join(binParentDir, basename)
 
-		sdsCreds, err := ioutil.TempFile("", "sdsCreds")
+		tmp, err := ioutil.TempFile("", "sdsCreds")
 		Expect(err).ToNot(HaveOccurred())
-		sdsCredsFile = sdsCreds.Name()
-		sdsCreds.Close()
+		sdsCredsFile = tmp.Name()
+		tmp.Close()
 		err = CopyFile(SdsCredsFixture, sdsCredsFile)
 		Expect(err).ToNot(HaveOccurred())
 
-		sdsValidation, err := ioutil.TempFile("", "sdsValidation")
+		tmp, err = ioutil.TempFile("", "sdsValidation")
 		Expect(err).ToNot(HaveOccurred())
-		sdsValidationFile = sdsValidation.Name()
-		sdsValidation.Close()
+		sdsValidationFile = tmp.Name()
+		tmp.Close()
 		err = CopyFile(SdsValidationFixture, sdsValidationFile)
 		Expect(err).ToNot(HaveOccurred())
 
 		os.Setenv("SDS_CREDS_FILE", sdsCredsFile)
 		os.Setenv("SDS_VALIDATION_FILE", sdsValidationFile)
 		os.Setenv("ENVOY_FILE", "fixtures/cf_assets_envoy_config/envoy.yaml")
+	})
+
+	AfterEach(func() {
+		err := os.Remove(sdsCredsFile)
+		Expect(err).NotTo(HaveOccurred())
+		err = os.Remove(sdsValidationFile)
+		Expect(err).NotTo(HaveOccurred())
 	})
 
 	Context("when nginx.exe is present in the same directory", func() {
