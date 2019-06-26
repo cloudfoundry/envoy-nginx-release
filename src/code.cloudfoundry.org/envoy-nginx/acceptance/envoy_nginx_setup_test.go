@@ -178,10 +178,10 @@ var _ = Describe("Acceptance", func() {
 			certFile := filepath.Join(confDir, "cert.pem")
 			keyFile := filepath.Join(confDir, "key.pem")
 
-			currentCert, err := ioutil.ReadFile(string(certFile))
+			currentCert, err := ioutil.ReadFile(certFile)
 			Expect(err).ShouldNot(HaveOccurred())
 
-			currentKey, err := ioutil.ReadFile(string(keyFile))
+			currentKey, err := ioutil.ReadFile(keyFile)
 			Expect(err).ShouldNot(HaveOccurred())
 
 			Expect(string(currentCert)).To(Equal(expectedCert))
