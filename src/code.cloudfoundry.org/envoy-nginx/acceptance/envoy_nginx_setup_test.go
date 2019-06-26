@@ -66,6 +66,8 @@ var _ = Describe("Acceptance", func() {
 		Expect(err).NotTo(HaveOccurred())
 		err = os.Remove(sdsValidationFile)
 		Expect(err).NotTo(HaveOccurred())
+		err = os.RemoveAll(binParentDir)
+		Expect(err).NotTo(HaveOccurred())
 	})
 
 	Context("when nginx.exe is present in the same directory", func() {
@@ -101,6 +103,11 @@ var _ = Describe("Acceptance", func() {
 				}
 			}
 			Expect(confDir).ToNot(BeEmpty())
+		})
+
+		AfterEach(func() {
+			err := os.RemoveAll(confDir)
+			Expect(err).NotTo(HaveOccurred())
 		})
 
 		Context("when the sds file is rotated", func() {
@@ -180,22 +187,19 @@ var _ = Describe("Acceptance", func() {
 			Expect(string(currentCert)).To(Equal(expectedCert))
 			Expect(string(currentKey)).To(Equal(expectedKey))
 		})
-
-		AfterEach(func() {
-			os.RemoveAll(binParentDir)
-			os.RemoveAll(confDir)
-		})
 	})
 
 	Context("nginx.exe fails when reloaded", func() {
 		BeforeEach(func() {
-			var err error
-			nginxBin, err = gexec.Build("code.cloudfoundry.org/envoy-nginx/fixtures/bad-nginx-reload")
+			nginxBin, err := gexec.Build("code.cloudfoundry.org/envoy-nginx/fixtures/bad-nginx-reload")
 			Expect(err).ToNot(HaveOccurred())
 
 			err = os.Rename(nginxBin, filepath.Join(binParentDir, "nginx.exe"))
 			Expect(err).ToNot(HaveOccurred())
-			nginxBin = filepath.Join(binParentDir, "nginx.exe")
+		})
+
+		AfterEach(func() {
+			// TODO: this test is orphaning the nginx-conf temporary directoy. Need to clean it up.
 		})
 
 		Context("when nginx.exe fails when reloaded", func() {
@@ -213,6 +217,7 @@ var _ = Describe("Acceptance", func() {
 				Eventually(session.Out).Should(gbytes.Say("-s,reload"))
 
 				Eventually(session, "5s").Should(gexec.Exit())
+				// TODO: Validate what this error is and what the error message looks like for users.
 				Expect(session.ExitCode()).ToNot(Equal(0))
 			})
 		})
@@ -220,8 +225,7 @@ var _ = Describe("Acceptance", func() {
 
 	Context("bad nginx.exe", func() {
 		BeforeEach(func() {
-			var err error
-			nginxBin, err = gexec.Build("code.cloudfoundry.org/envoy-nginx/fixtures/bad-nginx")
+			nginxBin, err := gexec.Build("code.cloudfoundry.org/envoy-nginx/fixtures/bad-nginx")
 			Expect(err).ToNot(HaveOccurred())
 
 			err = os.Rename(nginxBin, filepath.Join(binParentDir, "nginx.exe"))
@@ -230,6 +234,11 @@ var _ = Describe("Acceptance", func() {
 			nginxBin = filepath.Join(binParentDir, "nginx.exe")
 		})
 
+		AfterEach(func() {
+			// TODO: this test is orphaning the nginx-conf temporary directoy. Need to clean it up.
+		})
+
+		// TODO: Clarify what the error is.
 		Context("when nginx.exe exits with error", func() {
 			It("exits with error", func() {
 				_, _, err := Execute(exec.Command(envoyNginxBin))
@@ -259,6 +268,7 @@ var _ = Describe("Acceptance", func() {
 			aloneBin = filepath.Join(aloneParentDir, basename)
 		})
 
+		// TODO: Clarify what the error is.
 		It("errors", func() {
 			_, _, err := Execute(exec.Command(aloneBin))
 			Expect(err).To(HaveOccurred())
