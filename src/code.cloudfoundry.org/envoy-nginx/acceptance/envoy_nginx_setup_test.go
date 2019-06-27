@@ -27,6 +27,7 @@ var _ = Describe("Acceptance", func() {
 		binParentDir      string
 		sdsCredsFile      string
 		sdsValidationFile string
+		cmd               *exec.Cmd
 	)
 
 	BeforeEach(func() {
@@ -56,8 +57,7 @@ var _ = Describe("Acceptance", func() {
 		err = CopyFile(SdsValidationFixture, sdsValidationFile)
 		Expect(err).ToNot(HaveOccurred())
 
-		os.Setenv("SDS_CREDS_FILE", sdsCredsFile)
-		os.Setenv("SDS_VALIDATION_FILE", sdsValidationFile)
+		cmd = exec.Command(envoyNginxBin, "-c", EnvoyFixture, "-k", sdsCredsFile, "-v", sdsValidationFile)
 	})
 
 	AfterEach(func() {
@@ -83,7 +83,7 @@ var _ = Describe("Acceptance", func() {
 			Expect(err).ToNot(HaveOccurred())
 			nginxBin = filepath.Join(binParentDir, "nginx.exe")
 
-			session, err = gexec.Start(exec.Command(envoyNginxBin, "-c", EnvoyFixture), GinkgoWriter, GinkgoWriter)
+			session, err = gexec.Start(cmd, GinkgoWriter, GinkgoWriter)
 			Expect(err).ToNot(HaveOccurred())
 
 			// The output of the "fake" nginx.exe will always have a comma
@@ -203,7 +203,7 @@ var _ = Describe("Acceptance", func() {
 
 		Context("when nginx.exe fails when reloaded", func() {
 			It("exits with error", func() {
-				session, err := gexec.Start(exec.Command(envoyNginxBin, "-c", EnvoyFixture), GinkgoWriter, GinkgoWriter)
+				session, err := gexec.Start(cmd, GinkgoWriter, GinkgoWriter)
 				Expect(err).ToNot(HaveOccurred())
 
 				// The output of the "fake" nginx.exe will always have a comma
@@ -237,7 +237,7 @@ var _ = Describe("Acceptance", func() {
 		})
 
 		It("returns the error", func() {
-			session, err := gexec.Start(exec.Command(envoyNginxBin, "-c", EnvoyFixture), GinkgoWriter, GinkgoWriter)
+			session, err := gexec.Start(cmd, GinkgoWriter, GinkgoWriter)
 			Expect(err).NotTo(HaveOccurred())
 			Eventually(session, "2s").Should(gexec.Exit(1))
 			Eventually(session).Should(gbytes.Say("envoy.exe: Executing: "))

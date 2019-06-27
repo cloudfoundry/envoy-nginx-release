@@ -14,7 +14,29 @@ import (
 const DefaultSDSCredsFile = "C:\\etc\\cf-assets\\envoy_config\\sds-server-cert-and-key.yaml"
 const DefaultSDSServerValidationContextFile = "C:\\etc\\cf-assets\\envoy_config\\sds-server-validation-context.yaml"
 
-func Envoy(envoyConf string) {
+type App struct {
+	envoyConfig string
+	logger      logger
+}
+type logger interface {
+	Println(string)
+}
+
+func NewApp(logger logger, envoyConfig string) App {
+	return App{
+		envoyConfig: envoyConfig,
+		logger:      logger,
+	}
+}
+
+func (a App) Load() error {
+	a.logger.Println("envoy.exe: Starting executable")
+	a.logger.Println(fmt.Sprintf("Loading envoy config %s", a.envoyConfig))
+
+	return nil
+}
+
+func Envoy(envoyConf, sdsCreds, sdsValidation string) {
 	log.SetOutput(os.Stdout)
 	log.Println("envoy.exe: Starting executable")
 	// locate nginx.exe in the same directory as the running executable
@@ -30,19 +52,6 @@ func Envoy(envoyConf string) {
 		log.Fatalf("Failed to locate nginx.exe: %s", err)
 	}
 
-	// We use SDS_FILE for our tests
-	// TODO: can we assume that the sds file will always be in the same directory as the envoy.yaml?
-	sdsCredsFile := os.Getenv("SDS_CREDS_FILE")
-	if sdsCredsFile == "" {
-		sdsCredsFile = DefaultSDSCredsFile
-	}
-
-	// We use SDS_FILE for our tests
-	sdsValidationFile := os.Getenv("SDS_VALIDATION_FILE")
-	if sdsValidationFile == "" {
-		sdsValidationFile = DefaultSDSServerValidationContextFile
-	}
-
 	confDir, err := ioutil.TempDir("", "nginx-conf")
 	if err != nil {
 		log.Fatal(err)
@@ -50,8 +59,8 @@ func Envoy(envoyConf string) {
 
 	log.Println("envoy.exe: Generating conf")
 	envoyConfParser := parser.NewEnvoyConfParser()
-	sdsCredParser := parser.NewSdsCredParser(sdsCredsFile)
-	sdsValidationParser := parser.NewSdsServerValidationParser(sdsValidationFile)
+	sdsCredParser := parser.NewSdsCredParser(sdsCreds)
+	sdsValidationParser := parser.NewSdsServerValidationParser(sdsValidation)
 
 	nginxConfParser := parser.NewNginxConfig(envoyConfParser, sdsCredParser, sdsValidationParser, confDir)
 
@@ -65,9 +74,9 @@ func Envoy(envoyConf string) {
 	readyChan := make(chan bool)
 
 	go func() {
-		errorChan <- WatchFile(sdsCredsFile, readyChan, func() error {
-			log.Printf("envoy.exe: detected change in sdsfile (%s)\n", sdsCredsFile)
-			sdsFd, err := os.Stat(sdsCredsFile)
+		errorChan <- WatchFile(sdsCreds, readyChan, func() error {
+			log.Printf("envoy.exe: detected change in sdsfile (%s)\n", sdsCreds)
+			sdsFd, err := os.Stat(sdsCreds)
 			if err != nil {
 				return err
 			}
@@ -75,7 +84,7 @@ func Envoy(envoyConf string) {
 			* with one of the notifications reporting an empty file. NOOP in that case
 			 */
 			if sdsFd.Size() < 1 {
-				log.Printf("envoy.exe: detected change in sdsfile (%s) was a false alarm. NOOP.\n", sdsCredsFile)
+				log.Printf("envoy.exe: detected change in sdsfile (%s) was a false alarm. NOOP.\n", sdsCreds)
 				return nil
 			}
 			return reloadNginx(nginxBin, nginxConfParser)
