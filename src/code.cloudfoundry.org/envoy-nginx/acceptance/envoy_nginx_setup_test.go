@@ -24,7 +24,6 @@ var _ = Describe("Acceptance", func() {
 	var (
 		envoyNginxBin     string
 		binParentDir      string
-		nginxBin          string
 		sdsCredsFile      string
 		sdsValidationFile string
 	)
@@ -45,14 +44,12 @@ var _ = Describe("Acceptance", func() {
 		tmp, err := ioutil.TempFile("", "sdsCreds")
 		Expect(err).ToNot(HaveOccurred())
 		sdsCredsFile = tmp.Name()
-		tmp.Close()
 		err = CopyFile(SdsCredsFixture, sdsCredsFile)
 		Expect(err).ToNot(HaveOccurred())
 
 		tmp, err = ioutil.TempFile("", "sdsValidation")
 		Expect(err).ToNot(HaveOccurred())
 		sdsValidationFile = tmp.Name()
-		tmp.Close()
 		err = CopyFile(SdsValidationFixture, sdsValidationFile)
 		Expect(err).ToNot(HaveOccurred())
 
@@ -77,8 +74,7 @@ var _ = Describe("Acceptance", func() {
 		)
 
 		BeforeEach(func() {
-			var err error
-			nginxBin, err = gexec.Build("code.cloudfoundry.org/envoy-nginx/fixtures/nginx")
+			nginxBin, err := gexec.Build("code.cloudfoundry.org/envoy-nginx/fixtures/nginx")
 			Expect(err).ToNot(HaveOccurred())
 
 			err = os.Rename(nginxBin, filepath.Join(binParentDir, "nginx.exe"))
