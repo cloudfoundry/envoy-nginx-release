@@ -18,6 +18,7 @@ import (
 const (
 	SdsCredsFixture      = "../fixtures/cf_assets_envoy_config/sds-server-cert-and-key.yaml"
 	SdsValidationFixture = "../fixtures/cf_assets_envoy_config/sds-server-validation-context.yaml"
+	EnvoyFixture         = "../fixtures/cf_assets_envoy_config/envoy.yaml"
 )
 
 var _ = Describe("Acceptance", func() {
@@ -57,7 +58,6 @@ var _ = Describe("Acceptance", func() {
 
 		os.Setenv("SDS_CREDS_FILE", sdsCredsFile)
 		os.Setenv("SDS_VALIDATION_FILE", sdsValidationFile)
-		os.Setenv("ENVOY_FILE", "../fixtures/cf_assets_envoy_config/envoy.yaml")
 	})
 
 	AfterEach(func() {
@@ -83,8 +83,7 @@ var _ = Describe("Acceptance", func() {
 			Expect(err).ToNot(HaveOccurred())
 			nginxBin = filepath.Join(binParentDir, "nginx.exe")
 
-			// TODO: pass the right arguments
-			session, err = gexec.Start(exec.Command(envoyNginxBin), GinkgoWriter, GinkgoWriter)
+			session, err = gexec.Start(exec.Command(envoyNginxBin, "-c", EnvoyFixture), GinkgoWriter, GinkgoWriter)
 			Expect(err).ToNot(HaveOccurred())
 
 			// The output of the "fake" nginx.exe will always have a comma
@@ -204,7 +203,7 @@ var _ = Describe("Acceptance", func() {
 
 		Context("when nginx.exe fails when reloaded", func() {
 			It("exits with error", func() {
-				session, err := gexec.Start(exec.Command(envoyNginxBin), GinkgoWriter, GinkgoWriter)
+				session, err := gexec.Start(exec.Command(envoyNginxBin, "-c", EnvoyFixture), GinkgoWriter, GinkgoWriter)
 				Expect(err).ToNot(HaveOccurred())
 
 				// The output of the "fake" nginx.exe will always have a comma
@@ -238,7 +237,7 @@ var _ = Describe("Acceptance", func() {
 		})
 
 		It("returns the error", func() {
-			session, err := gexec.Start(exec.Command(envoyNginxBin), GinkgoWriter, GinkgoWriter)
+			session, err := gexec.Start(exec.Command(envoyNginxBin, "-c", EnvoyFixture), GinkgoWriter, GinkgoWriter)
 			Expect(err).NotTo(HaveOccurred())
 			Eventually(session, "2s").Should(gexec.Exit(1))
 			Eventually(session).Should(gbytes.Say("envoy.exe: Executing: "))
@@ -267,7 +266,7 @@ var _ = Describe("Acceptance", func() {
 		})
 
 		It("returns a helpful error message", func() {
-			session, err := gexec.Start(exec.Command(aloneBin), GinkgoWriter, GinkgoWriter)
+			session, err := gexec.Start(exec.Command(aloneBin, "-c", EnvoyFixture), GinkgoWriter, GinkgoWriter)
 			Expect(err).NotTo(HaveOccurred())
 			Eventually(session).Should(gbytes.Say("Failed to locate nginx.exe: "))
 			Eventually(session, "2s").ShouldNot(gexec.Exit(0))

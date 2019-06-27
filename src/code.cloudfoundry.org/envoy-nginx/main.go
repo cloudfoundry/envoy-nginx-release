@@ -9,7 +9,7 @@ import (
 )
 
 type flags struct {
-	Config string `short:"c" env:"ENVOY_FILE" default:"C:\\etc\\cf-assets\\envoy_config\\envoy.yaml"`
+	Config string `short:"c" default:"C:\\etc\\cf-assets\\envoy_config\\envoy.yaml"`
 }
 
 func main() {
