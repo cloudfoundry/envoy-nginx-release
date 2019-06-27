@@ -22,9 +22,11 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// logger := app.NewLogger(os.Stdout, os.Stdin)
-	// application := app.NewApp(logger, f.Config)
-	// application.Load()
+	logger := app.NewLogger(os.Stdout)
+	application := app.NewApp(logger, f.Config)
 
-	app.Envoy(f.Config, f.SdsCreds, f.SdsValidation)
+	err = application.Load(f.SdsCreds, f.SdsValidation)
+	if err != nil {
+		log.Fatal(err)
+	}
 }

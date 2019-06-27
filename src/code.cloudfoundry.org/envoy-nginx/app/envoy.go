@@ -29,32 +29,27 @@ func NewApp(logger logger, envoyConfig string) App {
 	}
 }
 
-func (a App) Load() error {
-	a.logger.Println("envoy.exe: Starting executable")
-	a.logger.Println(fmt.Sprintf("Loading envoy config %s", a.envoyConfig))
-
-	return nil
-}
-
-func Envoy(envoyConf, sdsCreds, sdsValidation string) {
+func (a App) Load(sdsCreds, sdsValidation string) error {
 	log.SetOutput(os.Stdout)
 	log.Println("envoy.exe: Starting executable")
 	// locate nginx.exe in the same directory as the running executable
 	mypath, err := os.Executable()
 	if err != nil {
-		log.Fatal(err)
+		// TODO: Format & test error
+		return err
 	}
 
 	pwd := filepath.Dir(mypath)
 	nginxBin := filepath.Join(pwd, "nginx.exe")
 
 	if _, err = os.Stat(nginxBin); err != nil {
-		log.Fatalf("Failed to locate nginx.exe: %s", err)
+		return fmt.Errorf("Failed to locate nginx.exe: %s", err)
 	}
 
 	confDir, err := ioutil.TempDir("", "nginx-conf")
 	if err != nil {
-		log.Fatal(err)
+		// TODO: Format & test error
+		return err
 	}
 
 	log.Println("envoy.exe: Generating conf")
@@ -78,6 +73,7 @@ func Envoy(envoyConf, sdsCreds, sdsValidation string) {
 			log.Printf("envoy.exe: detected change in sdsfile (%s)\n", sdsCreds)
 			sdsFd, err := os.Stat(sdsCreds)
 			if err != nil {
+				// TODO: Format & test error
 				return err
 			}
 			/* It's observed that sometimes fsnotify may provide a double notification
@@ -93,13 +89,16 @@ func Envoy(envoyConf, sdsCreds, sdsValidation string) {
 
 	go func() {
 		<-readyChan
-		errorChan <- startNginx(nginxBin, nginxConfParser, envoyConf)
+		errorChan <- startNginx(nginxBin, nginxConfParser, a.envoyConfig)
 	}()
 
 	err = <-errorChan
 	if err != nil {
-		log.Fatal(err)
+		// TODO: Format & test error
+		return err
 	}
+
+	return nil
 }
 
 func reloadNginx(nginxBin string, nginxConfParser parser.NginxConfig) error {
