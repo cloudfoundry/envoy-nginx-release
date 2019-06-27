@@ -50,8 +50,9 @@ func Envoy(envoyConf string) {
 
 	log.Println("envoy.exe: Generating conf")
 	envoyConfParser := parser.NewEnvoyConfParser()
-	sdsCredParser := parser.NewSdsCredParser()
-	sdsValidationParser := parser.NewSdsServerValidationParser()
+	sdsCredParser := parser.NewSdsCredParser(sdsCredsFile)
+	sdsValidationParser := parser.NewSdsServerValidationParser(sdsValidationFile)
+
 	nginxConfParser := parser.NewNginxConfig(envoyConfParser, sdsCredParser, sdsValidationParser, confDir)
 
 	/*
@@ -77,13 +78,13 @@ func Envoy(envoyConf string) {
 				log.Printf("envoy.exe: detected change in sdsfile (%s) was a false alarm. NOOP.\n", sdsCredsFile)
 				return nil
 			}
-			return reloadNginx(nginxBin, sdsCredsFile, sdsValidationFile, nginxConfParser)
+			return reloadNginx(nginxBin, nginxConfParser)
 		})
 	}()
 
 	go func() {
 		<-readyChan
-		errorChan <- startNginx(nginxBin, sdsCredsFile, sdsValidationFile, nginxConfParser, envoyConf)
+		errorChan <- startNginx(nginxBin, nginxConfParser, envoyConf)
 	}()
 
 	err = <-errorChan
@@ -92,10 +93,10 @@ func Envoy(envoyConf string) {
 	}
 }
 
-func reloadNginx(nginxBin, sdsCredsFile, sdsValidationFile string, nginxConfParser parser.NginxConfig) error {
+func reloadNginx(nginxBin string, nginxConfParser parser.NginxConfig) error {
 	log.Println("envoy.exe: about to reload nginx")
 
-	err := nginxConfParser.WriteTLSFiles(sdsCredsFile, sdsValidationFile)
+	err := nginxConfParser.WriteTLSFiles()
 	if err != nil {
 		return fmt.Errorf("Failed to write tls files: %s", err)
 	}
@@ -114,13 +115,13 @@ func reloadNginx(nginxBin, sdsCredsFile, sdsValidationFile string, nginxConfPars
 	return c.Run()
 }
 
-func startNginx(nginxBin, sdsCredsFile, sdsValidationFile string, nginxConfParser parser.NginxConfig, envoyConf string) error {
+func startNginx(nginxBin string, nginxConfParser parser.NginxConfig, envoyConf string) error {
 	confFile, err := nginxConfParser.Generate(envoyConf)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	err = nginxConfParser.WriteTLSFiles(sdsCredsFile, sdsValidationFile)
+	err = nginxConfParser.WriteTLSFiles()
 	if err != nil {
 		return fmt.Errorf("Failed to write tls files: %s", err)
 	}

@@ -3,10 +3,7 @@ package fakes
 type SdsCredParser struct {
 	GetCertAndKeyCall struct {
 		CallCount int
-		Receives  struct {
-			SdsFile string
-		}
-		Returns struct {
+		Returns   struct {
 			Cert  string
 			Key   string
 			Error error
@@ -14,9 +11,8 @@ type SdsCredParser struct {
 	}
 }
 
-func (e SdsCredParser) GetCertAndKey(sdsFile string) (string, string, error) {
+func (e SdsCredParser) GetCertAndKey() (string, string, error) {
 	e.GetCertAndKeyCall.CallCount++
-	e.GetCertAndKeyCall.Receives.SdsFile = sdsFile
 
 	return e.GetCertAndKeyCall.Returns.Cert, e.GetCertAndKeyCall.Returns.Key, e.GetCertAndKeyCall.Returns.Error
 }

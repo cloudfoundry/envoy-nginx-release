@@ -20,11 +20,11 @@ type envoyConfParser interface {
 }
 
 type sdsCredParser interface {
-	GetCertAndKey(sdsFile string) (string, string, error)
+	GetCertAndKey() (string, string, error)
 }
 
 type sdsValidationParser interface {
-	GetCACert(sdsFile string) (string, error)
+	GetCACert() (string, error)
 }
 
 type NginxConfig struct {
@@ -150,8 +150,8 @@ stream {
 	return n.confFile, nil
 }
 
-func (n NginxConfig) WriteTLSFiles(sdsCredsFile, sdsValidationFile string) error {
-	cert, key, err := n.sdsCredParser.GetCertAndKey(sdsCredsFile)
+func (n NginxConfig) WriteTLSFiles() error {
+	cert, key, err := n.sdsCredParser.GetCertAndKey()
 	if err != nil {
 		return fmt.Errorf("Failed to get cert and key from sds file: %s", err)
 	}
@@ -166,7 +166,7 @@ func (n NginxConfig) WriteTLSFiles(sdsCredsFile, sdsValidationFile string) error
 		return fmt.Errorf("Failed to write key file: %s", err)
 	}
 
-	caCert, err := n.sdsValidationParser.GetCACert(sdsValidationFile)
+	caCert, err := n.sdsValidationParser.GetCACert()
 	if err != nil {
 		return fmt.Errorf("Failed to get ca cert from sds server validation context file: %s", err)
 	}

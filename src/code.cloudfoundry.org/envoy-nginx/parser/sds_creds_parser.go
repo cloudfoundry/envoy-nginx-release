@@ -32,15 +32,19 @@ type PrivateKey struct {
 	InlineString string `yaml:"inline_string,omitempty"`
 }
 
-type SdsCredParser struct{}
+type SdsCredParser struct {
+	file string
+}
 
-func NewSdsCredParser() SdsCredParser {
-	return SdsCredParser{}
+func NewSdsCredParser(file string) SdsCredParser {
+	return SdsCredParser{
+		file: file,
+	}
 }
 
 /* Parses the Envoy SDS file and extracts the cert and key */
-func (p SdsCredParser) GetCertAndKey(sdsFile string) (string, string, error) {
-	contents, err := ioutil.ReadFile(sdsFile)
+func (p SdsCredParser) GetCertAndKey() (string, string, error) {
+	contents, err := ioutil.ReadFile(p.file)
 	if err != nil {
 		return "", "", fmt.Errorf("Failed to read sds creds: %s", err)
 	}

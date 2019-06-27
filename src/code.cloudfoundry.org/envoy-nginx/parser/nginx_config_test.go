@@ -18,12 +18,10 @@ import (
 
 var _ = Describe("Nginx Config", func() {
 	var (
-		envoyConfFile     string
-		sdsCredsFile      string
-		sdsValidationFile string
-		tmpdir            string
-		configFile        string
-		config            []byte
+		envoyConfFile string
+		tmpdir        string
+		configFile    string
+		config        []byte
 
 		envoyConfParser     *fakes.EnvoyConfParser
 		nginxConfig         parser.NginxConfig
@@ -33,8 +31,6 @@ var _ = Describe("Nginx Config", func() {
 
 	BeforeEach(func() {
 		envoyConfFile = "../fixtures/cf_assets_envoy_config/envoy.yaml"
-		sdsCredsFile = "../fixtures/cf_assets_envoy_config/sds-server-cert-and-key.yaml"
-		sdsValidationFile = "../fixtures/cf_assets_envoy_config/sds-server-validation-context.yaml"
 
 		sdsCredParser = &fakes.SdsCredParser{}
 		sdsValidationParser = &fakes.SdsServerValidationParser{}
@@ -55,7 +51,7 @@ var _ = Describe("Nginx Config", func() {
 		})
 
 		It("should have written cert, key, and ca", func() {
-			err := nginxConfig.WriteTLSFiles(sdsCredsFile, sdsValidationFile)
+			err := nginxConfig.WriteTLSFiles()
 			Expect(err).ShouldNot(HaveOccurred())
 
 			certPath := filepath.Join(tmpdir, "cert.pem")
@@ -81,7 +77,7 @@ var _ = Describe("Nginx Config", func() {
 			})
 
 			It("returns a helpful error message", func() {
-				err := nginxConfig.WriteTLSFiles(sdsCredsFile, sdsValidationFile)
+				err := nginxConfig.WriteTLSFiles()
 				Expect(err).To(MatchError("Failed to get cert and key from sds file: banana"))
 			})
 		})
@@ -92,7 +88,7 @@ var _ = Describe("Nginx Config", func() {
 			})
 
 			It("returns a helpful error message", func() {
-				err := nginxConfig.WriteTLSFiles(sdsCredsFile, sdsValidationFile)
+				err := nginxConfig.WriteTLSFiles()
 				Expect(err).To(MatchError("Failed to get ca cert from sds server validation context file: banana"))
 			})
 		})
@@ -236,7 +232,6 @@ var _ = Describe("Nginx Config", func() {
 					Expect(err).To(MatchError("port is missing for cluster name banana"))
 				})
 			})
-
 		})
 
 		Context("when ioutil fails to write the envoy_nginx.conf", func() {

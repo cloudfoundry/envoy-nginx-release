@@ -27,14 +27,18 @@ type TrustedCA struct {
 	InlineString string `yaml:"inline_string,omitempty"`
 }
 
-type SdsServerValidationParser struct{}
-
-func NewSdsServerValidationParser() SdsServerValidationParser {
-	return SdsServerValidationParser{}
+type SdsServerValidationParser struct {
+	file string
 }
 
-func (p SdsServerValidationParser) GetCACert(sdsFile string) (string, error) {
-	contents, err := ioutil.ReadFile(sdsFile)
+func NewSdsServerValidationParser(file string) SdsServerValidationParser {
+	return SdsServerValidationParser{
+		file: file,
+	}
+}
+
+func (p SdsServerValidationParser) GetCACert() (string, error) {
+	contents, err := ioutil.ReadFile(p.file)
 	if err != nil {
 		return "", fmt.Errorf("Failed to read sds server validation context: open not-a-real-file: %s", err)
 	}

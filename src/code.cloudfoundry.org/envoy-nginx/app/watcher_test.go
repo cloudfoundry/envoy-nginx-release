@@ -12,7 +12,7 @@ import (
 )
 
 var _ = Describe("Watcher", func() {
-	Context("when a file is watched", func() {
+	Describe("WatchFile", func() {
 		var (
 			watchmeFile string
 			newFile     string
