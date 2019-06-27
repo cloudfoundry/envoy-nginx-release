@@ -44,12 +44,14 @@ var _ = Describe("Acceptance", func() {
 		tmp, err := ioutil.TempFile("", "sdsCreds")
 		Expect(err).ToNot(HaveOccurred())
 		sdsCredsFile = tmp.Name()
+		tmp.Close()
 		err = CopyFile(SdsCredsFixture, sdsCredsFile)
 		Expect(err).ToNot(HaveOccurred())
 
 		tmp, err = ioutil.TempFile("", "sdsValidation")
 		Expect(err).ToNot(HaveOccurred())
 		sdsValidationFile = tmp.Name()
+		tmp.Close()
 		err = CopyFile(SdsValidationFixture, sdsValidationFile)
 		Expect(err).ToNot(HaveOccurred())
 
