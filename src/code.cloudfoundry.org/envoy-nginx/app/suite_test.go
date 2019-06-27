@@ -1,4 +1,4 @@
-package main_test
+package app_test
 
 import (
 	. "github.com/onsi/ginkgo"
@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestWatcher(t *testing.T) {
+func TestApp(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Watcher Suite")
+	RunSpecs(t, "App Suite")
 }

@@ -4,6 +4,7 @@ import (
 	"log"
 	"os"
 
+	"code.cloudfoundry.org/envoy-nginx/app"
 	"github.com/pivotal-cf/jhanda"
 )
 
@@ -19,5 +20,5 @@ func main() {
 		log.Fatal(err)
 	}
 
-	envoy(f.Config)
+	app.Envoy(f.Config)
 }

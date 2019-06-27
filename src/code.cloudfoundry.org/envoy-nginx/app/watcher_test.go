@@ -1,10 +1,11 @@
-package main
+package app_test
 
 import (
 	"fmt"
 	"io/ioutil"
 	"os"
 
+	"code.cloudfoundry.org/envoy-nginx/app"
 	. "code.cloudfoundry.org/envoy-nginx/testhelpers"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -36,7 +37,7 @@ var _ = Describe("Watcher", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			go func() {
-				WatchFile(watchmeFile, readyChan, func() error {
+				app.WatchFile(watchmeFile, readyChan, func() error {
 					ch <- "message"
 					return nil
 				})

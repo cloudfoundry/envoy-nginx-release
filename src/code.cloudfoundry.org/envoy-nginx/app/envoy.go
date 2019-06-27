@@ -1,4 +1,4 @@
-package main
+package app
 
 import (
 	"fmt"
@@ -14,7 +14,7 @@ import (
 const DefaultSDSCredsFile = "C:\\etc\\cf-assets\\envoy_config\\sds-server-cert-and-key.yaml"
 const DefaultSDSServerValidationContextFile = "C:\\etc\\cf-assets\\envoy_config\\sds-server-validation-context.yaml"
 
-func envoy(envoyConf string) {
+func Envoy(envoyConf string) {
 	log.SetOutput(os.Stdout)
 	log.Println("envoy.exe: Starting executable")
 	// locate nginx.exe in the same directory as the running executable
