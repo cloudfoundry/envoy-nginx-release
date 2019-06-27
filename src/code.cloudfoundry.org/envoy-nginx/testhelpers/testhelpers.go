@@ -1,13 +1,9 @@
 package testhelpers
 
 import (
-	"bytes"
 	"io"
 	"io/ioutil"
 	"os"
-	"os/exec"
-
-	. "github.com/onsi/ginkgo"
 )
 
 func CopyFile(src, dst string) error {
@@ -46,14 +42,4 @@ func RotateCert(newfile, sdsfilepath string) error {
 		return err
 	}
 	return os.Rename(tmpPath, sdsfilepath)
-}
-
-func Execute(c *exec.Cmd) (*bytes.Buffer, *bytes.Buffer, error) {
-	stdOut := new(bytes.Buffer)
-	stdErr := new(bytes.Buffer)
-	c.Stdout = io.MultiWriter(stdOut, GinkgoWriter)
-	c.Stderr = io.MultiWriter(stdErr, GinkgoWriter)
-	err := c.Run()
-
-	return stdOut, stdErr, err
 }

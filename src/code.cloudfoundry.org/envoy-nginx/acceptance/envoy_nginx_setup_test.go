@@ -212,14 +212,13 @@ var _ = Describe("Acceptance", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Eventually(session.Out).Should(gbytes.Say("-s,reload"))
 
-				Eventually(session, "5s").Should(gexec.Exit())
 				// TODO: Validate what this error is and what the error message looks like for users.
-				Expect(session.ExitCode()).ToNot(Equal(0))
+				Eventually(session, "5s").Should(gexec.Exit(1))
 			})
 		})
 	})
 
-	Context("bad nginx.exe", func() {
+	Context("when nginx.exe fails", func() {
 		BeforeEach(func() {
 			nginxBin, err := gexec.Build("code.cloudfoundry.org/envoy-nginx/fixtures/bad-nginx")
 			Expect(err).ToNot(HaveOccurred())
@@ -234,12 +233,11 @@ var _ = Describe("Acceptance", func() {
 			// TODO: this test is orphaning the nginx-conf temporary directoy. Need to clean it up.
 		})
 
-		// TODO: Clarify what the error is.
-		Context("when nginx.exe exits with error", func() {
-			It("exits with error", func() {
-				_, _, err := Execute(exec.Command(envoyNginxBin))
-				Expect(err).To(HaveOccurred())
-			})
+		It("returns the error", func() {
+			session, err := gexec.Start(exec.Command(envoyNginxBin), GinkgoWriter, GinkgoWriter)
+			Expect(err).NotTo(HaveOccurred())
+			Eventually(session, "2s").Should(gexec.Exit(1))
+			Eventually(session).Should(gbytes.Say("envoy.exe: Executing: "))
 		})
 	})
 
@@ -266,8 +264,9 @@ var _ = Describe("Acceptance", func() {
 
 		// TODO: Clarify what the error is.
 		It("errors", func() {
-			_, _, err := Execute(exec.Command(aloneBin))
-			Expect(err).To(HaveOccurred())
+			session, err := gexec.Start(exec.Command(aloneBin), GinkgoWriter, GinkgoWriter)
+			Expect(err).NotTo(HaveOccurred())
+			Eventually(session, "5s").ShouldNot(gexec.Exit(0))
 		})
 
 		AfterEach(func() {
