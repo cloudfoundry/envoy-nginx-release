@@ -62,13 +62,11 @@ var _ = Describe("Acceptance", func() {
 	})
 
 	AfterEach(func() {
-		err := os.Remove(sdsCredsFile)
-		Expect(err).NotTo(HaveOccurred())
-		err = os.Remove(sdsValidationFile)
-		Expect(err).NotTo(HaveOccurred())
-		gexec.CleanupBuildArtifacts()
-		err = os.RemoveAll(binParentDir)
-		Expect(err).NotTo(HaveOccurred())
+		Expect(os.Remove(sdsCredsFile)).NotTo(HaveOccurred())
+
+		Expect(os.Remove(sdsValidationFile)).NotTo(HaveOccurred())
+
+		Expect(os.RemoveAll(binParentDir)).NotTo(HaveOccurred())
 	})
 
 	Context("when nginx.exe is present in the same directory", func() {
@@ -88,7 +86,7 @@ var _ = Describe("Acceptance", func() {
 			nginxBin = filepath.Join(binParentDir, "nginx.exe")
 
 			// TODO: pass the right arguments
-			session, err = Start(exec.Command(envoyNginxBin))
+			session, err = gexec.Start(exec.Command(envoyNginxBin), GinkgoWriter, GinkgoWriter)
 			Expect(err).ToNot(HaveOccurred())
 
 			// The output of the "fake" nginx.exe will always have a comma
@@ -109,8 +107,7 @@ var _ = Describe("Acceptance", func() {
 		AfterEach(func() {
 			session.Terminate()
 
-			err := os.RemoveAll(confDir)
-			Expect(err).NotTo(HaveOccurred())
+			Expect(os.RemoveAll(confDir)).NotTo(HaveOccurred())
 		})
 
 		Context("when the sds file is rotated", func() {
@@ -207,7 +204,7 @@ var _ = Describe("Acceptance", func() {
 
 		Context("when nginx.exe fails when reloaded", func() {
 			It("exits with error", func() {
-				session, err := Start(exec.Command(envoyNginxBin))
+				session, err := gexec.Start(exec.Command(envoyNginxBin), GinkgoWriter, GinkgoWriter)
 				Expect(err).ToNot(HaveOccurred())
 
 				// The output of the "fake" nginx.exe will always have a comma

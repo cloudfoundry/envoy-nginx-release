@@ -8,7 +8,6 @@ import (
 	"os/exec"
 
 	. "github.com/onsi/ginkgo"
-	"github.com/onsi/gomega/gexec"
 )
 
 func CopyFile(src, dst string) error {
@@ -57,14 +56,4 @@ func Execute(c *exec.Cmd) (*bytes.Buffer, *bytes.Buffer, error) {
 	err := c.Run()
 
 	return stdOut, stdErr, err
-}
-
-func Start(c *exec.Cmd) (*gexec.Session, error) {
-	stdOut := new(bytes.Buffer)
-	stdErr := new(bytes.Buffer)
-	c.Stdout = io.MultiWriter(stdOut, GinkgoWriter)
-	c.Stderr = io.MultiWriter(stdErr, GinkgoWriter)
-	session, err := gexec.Start(c, GinkgoWriter, GinkgoWriter)
-
-	return session, err
 }
