@@ -30,12 +30,6 @@ func envoy(envoyConf string) {
 		log.Fatalf("Failed to locate nginx.exe: %s", err)
 	}
 
-	// We use ENVOY_FILE for our test
-	// TODO: depending on what we hear from Diego, get the path to envoy.yaml from the arguments
-	if overrideEnvoyConf := os.Getenv("ENVOY_FILE"); overrideEnvoyConf != "" {
-		envoyConf = overrideEnvoyConf
-	}
-
 	// We use SDS_FILE for our tests
 	// TODO: can we assume that the sds file will always be in the same directory as the envoy.yaml?
 	sdsCredsFile := os.Getenv("SDS_CREDS_FILE")

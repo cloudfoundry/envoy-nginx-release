@@ -10,7 +10,8 @@
   version = "v1.4.7"
 
 [[projects]]
-  digest = "1:a1038ef593beb4771c8f0f9c26e8b00410acd800af5c6864651d9bf160ea1813"
+  branch = "master"
+  digest = "1:59392ed8afb901aab4287d4894df8191722e34f3957716f4350c8c133ce99046"
   name = "github.com/hpcloud/tail"
   packages = [
     ".",
@@ -20,8 +21,7 @@
     "winfile",
   ]
   pruneopts = "UT"
-  revision = "a30252cb686a21eb2d0b98132633053ec2f7f1e5"
-  version = "v1.0.0"
+  revision = "a1dbeea552b7c8df4b542c66073e393de198a800"
 
 [[projects]]
   digest = "1:e9c3bb68a6c9470302b8046d4647e0612a2ea6037b9c6a47de60c0a90db504f8"
@@ -75,6 +75,17 @@
 
 [[projects]]
   branch = "master"
+  digest = "1:a5862941b8ac0491179120d73309bac03458724c5b4883f11dec1f1050e9fdf0"
+  name = "github.com/pivotal-cf/jhanda"
+  packages = [
+    ".",
+    "internal/parser",
+  ]
+  pruneopts = "UT"
+  revision = "e6aa09a032df2c727b140f9c6fc4df15aeb2b645"
+
+[[projects]]
+  branch = "master"
   digest = "1:a167b5c532f3245f5a147ade26185f16d6ee8f8d3f6c9846f447e9d8b9705505"
   name = "golang.org/x/net"
   packages = [
@@ -123,11 +134,10 @@
 
 [[projects]]
   digest = "1:abeb38ade3f32a92943e5be54f55ed6d6e3b6602761d74b4aab4c9dd45c18abd"
-  name = "gopkg.in/fsnotify.v1"
+  name = "gopkg.in/fsnotify/fsnotify.v1"
   packages = ["."]
   pruneopts = "UT"
   revision = "c2828203cd70a50dcccfb2761f8b1f8ceef9a8e9"
-  source = "https://github.com/fsnotify/fsnotify"
   version = "v1.4.7"
 
 [[projects]]
@@ -155,6 +165,7 @@
     "github.com/onsi/gomega",
     "github.com/onsi/gomega/gbytes",
     "github.com/onsi/gomega/gexec",
+    "github.com/pivotal-cf/jhanda",
     "gopkg.in/yaml.v2",
   ]
   solver-name = "gps-cdcl"

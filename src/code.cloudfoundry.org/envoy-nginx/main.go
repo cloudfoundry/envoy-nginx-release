@@ -1,21 +1,23 @@
-/* Faker envoy.exe */
 package main
 
 import (
+	"log"
 	"os"
+
+	"github.com/pivotal-cf/jhanda"
 )
 
-const DefaultEnvoyConfFile = "C:\\etc\\cf-assets\\envoy_config\\envoy.yaml"
+type flags struct {
+	Config string `short:"c" env:"ENVOY_FILE" default:"C:\\etc\\cf-assets\\envoy_config\\envoy.yaml"`
+}
 
 func main() {
+	var f flags
 
-	//TODO Find some stable flags library that lets you ignore unknown args
-	//We can't handle all envoy args!
-	envoyConfig := DefaultEnvoyConfFile
-	for i, arg := range os.Args {
-		if arg == "-c" && len(os.Args) > i+1 && os.Args[i+1] != "" {
-			envoyConfig = os.Args[i+1]
-		}
+	_, err := jhanda.Parse(&f, os.Args[1:])
+	if err != nil {
+		log.Fatal(err)
 	}
-	envoy(envoyConfig)
+
+	envoy(f.Config)
 }
