@@ -27,7 +27,7 @@ func envoy(envoyConf string) {
 	nginxBin := filepath.Join(pwd, "nginx.exe")
 
 	if _, err = os.Stat(nginxBin); err != nil {
-		log.Fatal(err)
+		log.Fatalf("Failed to locate nginx.exe: %s", err)
 	}
 
 	// We use ENVOY_FILE for our test

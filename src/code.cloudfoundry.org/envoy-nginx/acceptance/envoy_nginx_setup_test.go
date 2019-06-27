@@ -113,6 +113,7 @@ var _ = Describe("Acceptance", func() {
 
 				nginxConf := strings.Replace(filepath.Join(confDir, "envoy_nginx.conf"), `\`, `\\`, -1)
 				Eventually(session.Out).Should(gbytes.Say(fmt.Sprintf("-c,%s,-p,%s,-s,reload", nginxConf, strings.Replace(confDir, `\`, `\\`, -1))))
+
 				expectedCert := `-----BEGIN CERTIFICATE-----
 <<NEW EXPECTED CERT 1>>
 -----END CERTIFICATE-----
@@ -262,11 +263,11 @@ var _ = Describe("Acceptance", func() {
 			aloneBin = filepath.Join(aloneParentDir, basename)
 		})
 
-		// TODO: Clarify what the error is.
-		It("errors", func() {
+		It("returns a helpful error message", func() {
 			session, err := gexec.Start(exec.Command(aloneBin), GinkgoWriter, GinkgoWriter)
 			Expect(err).NotTo(HaveOccurred())
-			Eventually(session, "5s").ShouldNot(gexec.Exit(0))
+			Eventually(session).Should(gbytes.Say("Failed to locate nginx.exe: "))
+			Eventually(session, "2s").ShouldNot(gexec.Exit(0))
 		})
 
 		AfterEach(func() {
