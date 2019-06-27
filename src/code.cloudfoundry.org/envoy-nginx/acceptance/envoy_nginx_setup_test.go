@@ -65,8 +65,7 @@ var _ = Describe("Acceptance", func() {
 
 		Expect(os.Remove(sdsValidationFile)).NotTo(HaveOccurred())
 
-		// TODO: Make this work. We get "access is denied" trying to destroy nginx.exe
-		// Expect(os.RemoveAll(binParentDir)).NotTo(HaveOccurred())
+		Expect(os.RemoveAll(binParentDir)).NotTo(HaveOccurred())
 	})
 
 	Context("when nginx.exe is present in the same directory", func() {
@@ -105,6 +104,7 @@ var _ = Describe("Acceptance", func() {
 
 		AfterEach(func() {
 			session.Terminate()
+			Eventually(session, "5s").Should(gexec.Exit())
 
 			Expect(os.RemoveAll(confDir)).NotTo(HaveOccurred())
 		})
