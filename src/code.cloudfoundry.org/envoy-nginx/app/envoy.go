@@ -126,7 +126,7 @@ func reloadNginx(nginxBin string, nginxConfParser parser.NginxConfig) error {
 func startNginx(nginxBin string, nginxConfParser parser.NginxConfig, envoyConf string) error {
 	confFile, err := nginxConfParser.Generate(envoyConf)
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("Generating nginx config from envoy config: %s", err)
 	}
 
 	err = nginxConfParser.WriteTLSFiles()

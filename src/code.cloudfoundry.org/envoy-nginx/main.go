@@ -5,28 +5,29 @@ import (
 	"os"
 
 	"code.cloudfoundry.org/envoy-nginx/app"
-	"github.com/pivotal-cf/jhanda"
+	flags "github.com/jessevdk/go-flags"
 )
 
-type flags struct {
+type options struct {
 	Config        string `short:"c" default:"C:\\etc\\cf-assets\\envoy_config\\envoy.yaml"`
 	SdsCreds      string `short:"k" default:"C:\\etc\\cf-assets\\envoy_config\\sds-server-cert-and-keys.yaml"`
 	SdsValidation string `short:"v" default:"C:\\etc\\cf-assets\\envoy_config\\sds-server-validation-context.yml"`
 }
 
 func main() {
-	var f flags
+	var o options
 
-	_, err := jhanda.Parse(&f, os.Args[1:])
+	p := flags.NewParser(&o, flags.IgnoreUnknown)
+	_, err := p.ParseArgs(os.Args[1:])
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Flags parse: %s", err)
 	}
 
 	logger := app.NewLogger(os.Stdout)
-	application := app.NewApp(logger, f.Config)
+	application := app.NewApp(logger, o.Config)
 
-	err = application.Load(f.SdsCreds, f.SdsValidation)
+	err = application.Load(o.SdsCreds, o.SdsValidation)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Application load: %s", err)
 	}
 }
