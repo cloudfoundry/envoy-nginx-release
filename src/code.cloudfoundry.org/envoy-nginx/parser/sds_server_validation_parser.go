@@ -40,7 +40,7 @@ func NewSdsServerValidationParser(file string) SdsServerValidationParser {
 func (p SdsServerValidationParser) GetCACert() (string, error) {
 	contents, err := ioutil.ReadFile(p.file)
 	if err != nil {
-		return "", fmt.Errorf("Failed to read sds server validation context: open not-a-real-file: %s", err)
+		return "", fmt.Errorf("Failed to read sds server validation context: %s", err)
 	}
 
 	auth := SdsServerValidation{}

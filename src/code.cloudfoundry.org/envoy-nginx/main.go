@@ -16,6 +16,6 @@ func main() {
 
 	err := application.Load(opts.SdsCreds, opts.SdsValidation)
 	if err != nil {
-		log.Fatalf("Application load: %s", err)
+		log.Fatalf("envoy-nginx application: %s", err)
 	}
 }

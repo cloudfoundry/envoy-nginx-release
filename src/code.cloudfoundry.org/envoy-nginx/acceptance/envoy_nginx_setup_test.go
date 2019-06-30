@@ -268,7 +268,7 @@ var _ = Describe("Acceptance", func() {
 		It("returns a helpful error message", func() {
 			session, err := gexec.Start(exec.Command(aloneBin, "-c", EnvoyFixture), GinkgoWriter, GinkgoWriter)
 			Expect(err).NotTo(HaveOccurred())
-			Eventually(session).Should(gbytes.Say("Failed to locate nginx.exe: "))
+			Eventually(session).Should(gbytes.Say("envoy-nginx application: os stat nginx.exe:"))
 			Eventually(session, "2s").ShouldNot(gexec.Exit(0))
 		})
 

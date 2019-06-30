@@ -11,9 +11,6 @@ import (
 	"code.cloudfoundry.org/envoy-nginx/parser"
 )
 
-const DefaultSDSCredsFile = "C:\\etc\\cf-assets\\envoy_config\\sds-server-cert-and-key.yaml"
-const DefaultSDSServerValidationContextFile = "C:\\etc\\cf-assets\\envoy_config\\sds-server-validation-context.yaml"
-
 type App struct {
 	envoyConfig string
 	logger      logger
@@ -31,7 +28,7 @@ func NewApp(logger logger, envoyConfig string) App {
 
 func (a App) Load(sdsCreds, sdsValidation string) error {
 	log.SetOutput(os.Stdout)
-	log.Println("envoy.exe: Starting executable")
+	log.Println("finding nginx executable")
 	// locate nginx.exe in the same directory as the running executable
 	mypath, err := os.Executable()
 	if err != nil {
@@ -43,7 +40,7 @@ func (a App) Load(sdsCreds, sdsValidation string) error {
 	nginxBin := filepath.Join(pwd, "nginx.exe")
 
 	if _, err = os.Stat(nginxBin); err != nil {
-		return fmt.Errorf("Failed to locate nginx.exe: %s", err)
+		return fmt.Errorf("os stat nginx.exe: %s", err)
 	}
 
 	confDir, err := ioutil.TempDir("", "nginx-conf")
@@ -52,7 +49,7 @@ func (a App) Load(sdsCreds, sdsValidation string) error {
 		return err
 	}
 
-	log.Println("envoy.exe: Generating conf")
+	log.Println("generating nginx config")
 	envoyConfParser := parser.NewEnvoyConfParser()
 	sdsCredParser := parser.NewSdsCredParser(sdsCreds)
 	sdsValidationParser := parser.NewSdsServerValidationParser(sdsValidation)
@@ -70,7 +67,7 @@ func (a App) Load(sdsCreds, sdsValidation string) error {
 
 	go func() {
 		errorChan <- WatchFile(sdsCreds, readyChan, func() error {
-			log.Printf("envoy.exe: detected change in sdsfile (%s)\n", sdsCreds)
+			log.Printf("detected change in sdsfile (%s)\n", sdsCreds)
 			sdsFd, err := os.Stat(sdsCreds)
 			if err != nil {
 				// TODO: Format & test error
@@ -80,7 +77,7 @@ func (a App) Load(sdsCreds, sdsValidation string) error {
 			* with one of the notifications reporting an empty file. NOOP in that case
 			 */
 			if sdsFd.Size() < 1 {
-				log.Printf("envoy.exe: detected change in sdsfile (%s) was a false alarm. NOOP.\n", sdsCreds)
+				log.Printf("detected change in sdsfile (%s) was a false alarm. NOOP.\n", sdsCreds)
 				return nil
 			}
 			return reloadNginx(nginxBin, nginxConfParser)

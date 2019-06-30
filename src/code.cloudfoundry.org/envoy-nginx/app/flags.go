@@ -4,8 +4,8 @@ import "strings"
 
 const (
 	DefaultEnvoyConfigPath          = "C:\\etc\\cf-assets\\envoy_config\\envoy.yaml"
-	DefaultSdsCertAndKeysPath       = "C:\\etc\\cf-assets\\envoy_config\\sds-server-cert-and-keys.yaml"
-	DefaultSdsValidationContextPath = "C:\\etc\\cf-assets\\envoy_config\\sds-server-validation-context.yml"
+	DefaultSdsCertAndKeysPath       = "C:\\etc\\cf-assets\\envoy_config\\sds-server-cert-and-key.yaml"
+	DefaultSdsValidationContextPath = "C:\\etc\\cf-assets\\envoy_config\\sds-server-validation-context.yaml"
 )
 
 type Options struct {

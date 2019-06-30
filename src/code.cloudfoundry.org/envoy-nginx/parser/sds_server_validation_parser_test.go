@@ -51,12 +51,11 @@ var _ = Describe("SdsServerValidationParser", func() {
 
 		Context("when sdsCreds doesn't exist", func() {
 			BeforeEach(func() {
-
 				sdsServerValidationParser = parser.NewSdsServerValidationParser("not-a-real-file")
 			})
 			It("should return a read error", func() {
 				_, err := sdsServerValidationParser.GetCACert()
-				Expect(err.Error()).To(ContainSubstring("Failed to read sds server validation context: open not-a-real-file:"))
+				Expect(err.Error()).To(ContainSubstring("Failed to read sds server validation context:"))
 			})
 		})
 
