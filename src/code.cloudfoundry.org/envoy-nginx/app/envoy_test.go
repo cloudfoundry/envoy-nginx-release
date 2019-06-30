@@ -9,6 +9,12 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+const (
+	EnvoyConfig   = "../fixtures/cf_assets_envoy_config/envoy.yaml"
+	SdsCreds      = "../fixtures/cf_assets_envoy_config/sds-server-cert-and-key.yaml"
+	SdsValidation = "../fixtures/cf_assets_envoy_config/sds-server-validation-context.yaml"
+)
+
 var _ = Describe("App", func() {
 	Describe("Load", func() {
 		var (
@@ -20,9 +26,6 @@ var _ = Describe("App", func() {
 		)
 
 		BeforeEach(func() {
-			envoyConfig = "../fixtures/cf_assets_envoy_config/envoy.yaml"
-			sdsCreds = "../fixtures/cf_assets_envoy_config/sds-server-cert-and-key.yaml"
-			sdsValidation = "../fixtures/cf_assets_envoy_config/sds-server-validation-context.yaml"
 			logger = &fakes.Logger{}
 			application = app.NewApp(logger, envoyConfig)
 		})

@@ -20,12 +20,6 @@
   revision = "a1dbeea552b7c8df4b542c66073e393de198a800"
 
 [[projects]]
-  name = "github.com/jessevdk/go-flags"
-  packages = ["."]
-  revision = "c6ca198ec95c841fdb89fc0de7496fed11ab854e"
-  version = "v1.4.0"
-
-[[projects]]
   name = "github.com/onsi/ginkgo"
   packages = [
     ".",
@@ -134,6 +128,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "90de5d2b0a78e088227283b729dc5499a43ce2d51099e5055d329d43d9a9748d"
+  inputs-digest = "660b8bf9101b31e0931b245b8d41ea33428bd940b7d0e2f4096a0e05b85a3f42"
   solver-name = "gps-cdcl"
   solver-version = 1
