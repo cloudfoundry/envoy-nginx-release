@@ -21,7 +21,7 @@ var _ = Describe("Flags", func() {
 		envoyNginxBin, err = gexec.Build("code.cloudfoundry.org/envoy-nginx")
 		Expect(err).ToNot(HaveOccurred())
 
-		cmd = exec.Command(envoyNginxBin, "-c", EnvoyFixture, "-k", SdsCredsFixture, "-v", SdsValidationFixture)
+		cmd = exec.Command(envoyNginxBin, "-c", EnvoyFixture, "--creds", SdsCredsFixture, "--validation", SdsValidationFixture)
 	})
 
 	AfterEach(func() {
@@ -39,7 +39,7 @@ var _ = Describe("Flags", func() {
 		It("does not fail with undefined flag error", func() {
 			session, err := gexec.Start(exec.Command(envoyNginxBin, "-z", "nope"), GinkgoWriter, GinkgoWriter)
 			Expect(err).NotTo(HaveOccurred())
-			Eventually(session).ShouldNot(gbytes.Say("Failed to parse flags: flag provided but not defined: -z"))
+			Eventually(session).ShouldNot(gbytes.Say("Flags parse:"))
 		})
 	})
 })

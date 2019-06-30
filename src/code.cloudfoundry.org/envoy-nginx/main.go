@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 
@@ -9,9 +10,9 @@ import (
 )
 
 type options struct {
-	Config        string `short:"c" default:"C:\\etc\\cf-assets\\envoy_config\\envoy.yaml"`
-	SdsCreds      string `short:"k" default:"C:\\etc\\cf-assets\\envoy_config\\sds-server-cert-and-keys.yaml"`
-	SdsValidation string `short:"v" default:"C:\\etc\\cf-assets\\envoy_config\\sds-server-validation-context.yml"`
+	Config        string `short:"c"         default:"C:\\etc\\cf-assets\\envoy_config\\envoy.yaml"`
+	SdsCreds      string `long:"creds"      default:"C:\\etc\\cf-assets\\envoy_config\\sds-server-cert-and-keys.yaml"`
+	SdsValidation string `long:"validation" default:"C:\\etc\\cf-assets\\envoy_config\\sds-server-validation-context.yml"`
 }
 
 func main() {

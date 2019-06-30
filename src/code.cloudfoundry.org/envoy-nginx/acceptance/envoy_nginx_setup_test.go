@@ -57,7 +57,7 @@ var _ = Describe("Acceptance", func() {
 		err = CopyFile(SdsValidationFixture, sdsValidationFile)
 		Expect(err).ToNot(HaveOccurred())
 
-		cmd = exec.Command(envoyNginxBin, "-c", EnvoyFixture, "-k", sdsCredsFile, "-v", sdsValidationFile)
+		cmd = exec.Command(envoyNginxBin, "-c", EnvoyFixture, "--creds", sdsCredsFile, "--validation", sdsValidationFile)
 	})
 
 	AfterEach(func() {
