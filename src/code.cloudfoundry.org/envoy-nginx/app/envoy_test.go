@@ -18,24 +18,21 @@ const (
 var _ = Describe("App", func() {
 	Describe("Load", func() {
 		var (
-			application   app.App
-			envoyConfig   string
-			logger        *fakes.Logger
-			sdsCreds      string
-			sdsValidation string
+			application app.App
+			logger      *fakes.Logger
 		)
 
 		BeforeEach(func() {
 			logger = &fakes.Logger{}
-			application = app.NewApp(logger, envoyConfig)
+			application = app.NewApp(logger, EnvoyConfig)
 		})
 
 		PIt("loads the configurations for nginx and envoy", func() {
-			err := application.Load(sdsCreds, sdsValidation)
+			err := application.Load(SdsCreds, SdsValidation)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(logger.PrintlnCall.Messages).To(ConsistOf(
 				"envoy.exe: Starting executable",
-				fmt.Sprintf("Loading envoy config %s", envoyConfig),
+				fmt.Sprintf("Loading envoy config %s", EnvoyConfig),
 			))
 		})
 	})
