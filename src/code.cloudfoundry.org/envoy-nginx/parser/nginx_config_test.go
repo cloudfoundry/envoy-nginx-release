@@ -43,6 +43,10 @@ var _ = Describe("Nginx Config", func() {
 		nginxConfig = parser.NewNginxConfig(envoyConfParser, sdsCredParser, sdsValidationParser, tmpdir)
 	})
 
+	AfterEach(func() {
+		Expect(os.RemoveAll(tmpdir)).NotTo(HaveOccurred())
+	})
+
 	Describe("WriteTLSFiles", func() {
 		BeforeEach(func() {
 			sdsCredParser.GetCertAndKeyCall.Returns.Cert = "some-cert"
@@ -102,10 +106,6 @@ var _ = Describe("Nginx Config", func() {
 				"1-service-cluster": "61002",
 				"2-service-cluster": "61003",
 			}
-		})
-
-		AfterEach(func() {
-			os.RemoveAll(tmpdir)
 		})
 
 		Describe("Good configuration", func() {
@@ -215,9 +215,6 @@ var _ = Describe("Nginx Config", func() {
 
 		Describe("Bad configuration", func() {
 			BeforeEach(func() {
-				var err error
-				tmpdir, err = ioutil.TempDir("", "conf")
-				Expect(err).ShouldNot(HaveOccurred())
 				nginxConfig = parser.NewNginxConfig(envoyConfParser, sdsCredParser, sdsValidationParser, tmpdir)
 			})
 
