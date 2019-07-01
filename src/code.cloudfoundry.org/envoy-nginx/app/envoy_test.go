@@ -2,6 +2,7 @@ package app_test
 
 import (
 	"errors"
+	"io/ioutil"
 	"os"
 
 	"code.cloudfoundry.org/envoy-nginx/app"
@@ -67,7 +68,7 @@ var _ = Describe("App", func() {
 			Expect(err).NotTo(HaveOccurred())
 		})
 
-		It("starts nginx", func() {
+		It("configures and starts nginx", func() {
 			err := application.Load(nginxPath, SdsCreds, SdsValidation)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -77,6 +78,15 @@ var _ = Describe("App", func() {
 				"-p", ContainSubstring("nginx-conf"),
 			))
 			nginxConfDir = cmd.RunCall.Receives[0].Args[3]
+
+			files, err := ioutil.ReadDir(nginxConfDir)
+			Expect(err).ToNot(HaveOccurred())
+
+			names := []string{}
+			for _, file := range files {
+				names = append(names, file.Name())
+			}
+			Expect(names).To(ConsistOf("logs", "envoy_nginx.conf", "cert.pem", "key.pem", "ca.pem"))
 		})
 
 		Context("when running the command fails", func() {

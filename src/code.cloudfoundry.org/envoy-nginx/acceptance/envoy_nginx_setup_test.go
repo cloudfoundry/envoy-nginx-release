@@ -135,29 +135,6 @@ var _ = Describe("Acceptance", func() {
 				Expect(string(currentKey)).To(Equal(expectedKey))
 			})
 		})
-
-		It("calls nginx with the right arguments", func() {
-			Expect(strings.TrimSpace(args[1])).To(Equal("-c"))
-
-			nginxConf := strings.TrimSpace(args[2])
-			_, err := os.Stat(nginxConf)
-			Expect(err).ToNot(HaveOccurred())
-
-			Expect(strings.TrimSpace(args[3])).To(Equal("-p"))
-
-			Expect(confDir).ToNot(BeEmpty())
-		})
-
-		It("creates the right files in the output directory", func() {
-			files, err := ioutil.ReadDir(confDir)
-			Expect(err).ToNot(HaveOccurred())
-
-			names := []string{}
-			for _, file := range files {
-				names = append(names, file.Name())
-			}
-			Expect(names).To(ConsistOf("logs", "envoy_nginx.conf", "cert.pem", "key.pem", "ca.pem"))
-		})
 	})
 
 	Context("nginx.exe fails when reloaded", func() {
@@ -184,66 +161,11 @@ var _ = Describe("Acceptance", func() {
 			By("simulating the cert/key rotation by diego")
 			err = RotateCert("../fixtures/cf_assets_envoy_config/sds-server-cert-and-key-rotated.yaml", sdsCredsFile)
 			Expect(err).ToNot(HaveOccurred())
+
 			Eventually(session.Out).Should(gbytes.Say("-s,reload"))
 
 			// TODO: Validate what this error is and what the error message looks like for users.
 			Eventually(session, "5s").Should(gexec.Exit(1))
-		})
-	})
-
-	Context("when nginx.exe fails", func() {
-		BeforeEach(func() {
-			nginxBin, err := gexec.Build("code.cloudfoundry.org/envoy-nginx/fixtures/bad-nginx")
-			Expect(err).ToNot(HaveOccurred())
-
-			err = os.Rename(nginxBin, filepath.Join(binParentDir, "nginx.exe"))
-			Expect(err).ToNot(HaveOccurred())
-
-			nginxBin = filepath.Join(binParentDir, "nginx.exe")
-		})
-
-		AfterEach(func() {
-			// TODO: this test is orphaning the nginx-conf temporary directoy. Need to clean it up.
-		})
-
-		It("returns the error", func() {
-			session, err := gexec.Start(cmd, GinkgoWriter, GinkgoWriter)
-			Expect(err).NotTo(HaveOccurred())
-			Eventually(session, "2s").Should(gexec.Exit(1))
-			Eventually(session).Should(gbytes.Say("envoy.exe: Executing: "))
-		})
-	})
-
-	Context("when nginx.exe is not present in the same directory", func() {
-		var (
-			aloneBin       string
-			aloneParentDir string
-		)
-
-		BeforeEach(func() {
-			var err error
-			aloneBin, err = gexec.Build("code.cloudfoundry.org/envoy-nginx")
-			Expect(err).ToNot(HaveOccurred())
-
-			aloneParentDir, err = ioutil.TempDir("", "envoy-nginx")
-			Expect(err).ToNot(HaveOccurred())
-
-			basename := filepath.Base(aloneBin)
-			err = os.Rename(aloneBin, filepath.Join(aloneParentDir, basename))
-			Expect(err).ToNot(HaveOccurred())
-
-			aloneBin = filepath.Join(aloneParentDir, basename)
-		})
-
-		It("returns a helpful error message", func() {
-			session, err := gexec.Start(exec.Command(aloneBin, "-c", EnvoyFixture), GinkgoWriter, GinkgoWriter)
-			Expect(err).NotTo(HaveOccurred())
-			Eventually(session).Should(gbytes.Say("envoy-nginx application: get nginx-path: stat nginx.exe:"))
-			Eventually(session, "2s").ShouldNot(gexec.Exit(0))
-		})
-
-		AfterEach(func() {
-			os.RemoveAll(aloneParentDir)
 		})
 	})
 })
