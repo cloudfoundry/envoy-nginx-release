@@ -14,35 +14,48 @@ import (
 type App struct {
 	envoyConfig string
 	logger      logger
+	cmd         cmd
 }
+
 type logger interface {
 	Println(string)
 }
 
-func NewApp(logger logger, envoyConfig string) App {
+type cmd interface {
+	Run(string, ...string) error
+}
+
+func NewApp(logger logger, cmd cmd, envoyConfig string) App {
 	return App{
 		envoyConfig: envoyConfig,
 		logger:      logger,
+		cmd:         cmd,
 	}
 }
 
-func (a App) Load(sdsCreds, sdsValidation string) error {
+// Searching for nginx.exe in the same directory
+// that our app binary is running in.
+func (a App) GetNginxPath() (path string, err error) {
 	log.SetOutput(os.Stdout)
-	log.Println("finding nginx executable")
-	// locate nginx.exe in the same directory as the running executable
+
 	mypath, err := os.Executable()
 	if err != nil {
-		// TODO: test error
-		return fmt.Errorf("executable path: %s", err)
+		return "", fmt.Errorf("executable path: %s", err)
 	}
 
 	pwd := filepath.Dir(mypath)
-	nginxBin := filepath.Join(pwd, "nginx.exe")
+	nginxPath := filepath.Join(pwd, "nginx.exe")
 
-	_, err = os.Stat(nginxBin)
+	_, err = os.Stat(nginxPath)
 	if err != nil {
-		return fmt.Errorf("stat nginx.exe: %s", err)
+		return "", fmt.Errorf("stat nginx.exe: %s", err)
 	}
+
+	return nginxPath, nil
+}
+
+func (a App) Load(nginxPath, sdsCreds, sdsValidation string) error {
+	log.SetOutput(os.Stdout)
 
 	confDir, err := ioutil.TempDir("", "nginx-conf")
 	if err != nil {
@@ -87,13 +100,13 @@ func (a App) Load(sdsCreds, sdsValidation string) error {
 				log.Printf("detected change in sdsfile (%s) was a false alarm. NOOP.\n", sdsCreds)
 				return nil
 			}
-			return reloadNginx(nginxBin, nginxConfParser)
+			return reloadNginx(nginxPath, nginxConfParser)
 		})
 	}()
 
 	go func() {
 		<-readyChan
-		errorChan <- startNginx(nginxBin, nginxConfParser, a.envoyConfig)
+		errorChan <- a.startNginx(nginxPath, nginxConfParser, a.envoyConfig)
 	}()
 
 	err = <-errorChan
@@ -105,7 +118,7 @@ func (a App) Load(sdsCreds, sdsValidation string) error {
 	return nil
 }
 
-func reloadNginx(nginxBin string, nginxConfParser parser.NginxConfig) error {
+func reloadNginx(nginxPath string, nginxConfParser parser.NginxConfig) error {
 	log.Println("envoy.exe: about to reload nginx")
 
 	err := nginxConfParser.WriteTLSFiles()
@@ -120,14 +133,14 @@ func reloadNginx(nginxBin string, nginxConfParser parser.NginxConfig) error {
 	* we use (as of date) is wired during compilation to use "./conf/nginx.conf" as
 	 */
 	log.Println("envoy.exe: about to issue -s reload")
-	log.Println("envoy.exe: Executing:", nginxBin, "-c", confFile, "-p", confDir, "-s", "reload")
-	c := exec.Command(nginxBin, "-c", confFile, "-p", confDir, "-s", "reload")
+	log.Println("envoy.exe: Executing:", nginxPath, "-c", confFile, "-p", confDir, "-s", "reload")
+	c := exec.Command(nginxPath, "-c", confFile, "-p", confDir, "-s", "reload")
 	c.Stdout = os.Stdout
 	c.Stderr = os.Stderr
 	return c.Run()
 }
 
-func startNginx(nginxBin string, nginxConfParser parser.NginxConfig, envoyConf string) error {
+func (a App) startNginx(nginxPath string, nginxConfParser parser.NginxConfig, envoyConf string) error {
 	confFile, err := nginxConfParser.Generate(envoyConf)
 	if err != nil {
 		return fmt.Errorf("Generating nginx config from envoy config: %s", err)
@@ -140,10 +153,11 @@ func startNginx(nginxBin string, nginxConfParser parser.NginxConfig, envoyConf s
 
 	confDir := nginxConfParser.GetConfDir()
 
-	log.Println("envoy.exe: Executing:", nginxBin, "-c", confFile, "-p", confDir)
+	log.Println("envoy.exe: Executing:", nginxPath, "-c", confFile, "-p", confDir)
 
-	c := exec.Command(nginxBin, "-c", confFile, "-p", confDir)
-	c.Stdout = os.Stdout
-	c.Stderr = os.Stderr
-	return c.Run()
+	err = a.cmd.Run(nginxPath, "-c", confFile, "-p", confDir)
+	if err != nil {
+		return fmt.Errorf("cmd run: %s", err)
+	}
+	return nil
 }

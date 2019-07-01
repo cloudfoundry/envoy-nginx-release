@@ -12,10 +12,16 @@ func main() {
 	opts := flags.Parse(os.Args[1:])
 
 	logger := app.NewLogger(os.Stdout)
-	application := app.NewApp(logger, opts.EnvoyConfig)
+	cmd := app.NewCmd(os.Stdout, os.Stderr)
+	application := app.NewApp(logger, cmd, opts.EnvoyConfig)
 
-	err := application.Load(opts.SdsCreds, opts.SdsValidation)
+	nginxPath, err := application.GetNginxPath()
 	if err != nil {
-		log.Fatalf("envoy-nginx application: %s", err)
+		log.Fatalf("envoy-nginx application: get nginx-path: %s", err)
+	}
+
+	err = application.Load(nginxPath, opts.SdsCreds, opts.SdsValidation)
+	if err != nil {
+		log.Fatalf("envoy-nginx application: load: %s", err)
 	}
 }

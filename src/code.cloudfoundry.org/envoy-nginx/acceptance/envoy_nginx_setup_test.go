@@ -89,15 +89,9 @@ var _ = Describe("Acceptance", func() {
 			// The output of the "fake" nginx.exe will always have a comma
 			Eventually(session.Out).Should(gbytes.Say(","))
 			args = strings.Split(string(session.Out.Contents()), ",")
-
 			Expect(len(args)).To(Equal(5))
 
-			confDir = ""
-			for i, arg := range args {
-				if arg == "-p" && len(args) > i+1 {
-					confDir = strings.TrimSpace(args[i+1])
-				}
-			}
+			confDir = findNginxConfDir(args)
 			Expect(confDir).ToNot(BeEmpty())
 		})
 
@@ -201,23 +195,21 @@ var _ = Describe("Acceptance", func() {
 			// TODO: this test is orphaning the nginx-conf temporary directoy. Need to clean it up.
 		})
 
-		Context("when nginx.exe fails when reloaded", func() {
-			It("exits with error", func() {
-				session, err := gexec.Start(cmd, GinkgoWriter, GinkgoWriter)
-				Expect(err).ToNot(HaveOccurred())
+		It("exits with error", func() {
+			session, err := gexec.Start(cmd, GinkgoWriter, GinkgoWriter)
+			Expect(err).ToNot(HaveOccurred())
 
-				// The output of the "fake" nginx.exe will always have a comma
-				// Include this line so that the file watcher will have a chance to start
-				Eventually(session.Out).Should(gbytes.Say(","))
+			// The output of the "fake" nginx.exe will always have a comma
+			// Include this line so that the file watcher will have a chance to start
+			Eventually(session.Out).Should(gbytes.Say(","))
 
-				By("simulating the cert/key rotation by diego")
-				err = RotateCert("../fixtures/cf_assets_envoy_config/sds-server-cert-and-key-rotated.yaml", sdsCredsFile)
-				Expect(err).ToNot(HaveOccurred())
-				Eventually(session.Out).Should(gbytes.Say("-s,reload"))
+			By("simulating the cert/key rotation by diego")
+			err = RotateCert("../fixtures/cf_assets_envoy_config/sds-server-cert-and-key-rotated.yaml", sdsCredsFile)
+			Expect(err).ToNot(HaveOccurred())
+			Eventually(session.Out).Should(gbytes.Say("-s,reload"))
 
-				// TODO: Validate what this error is and what the error message looks like for users.
-				Eventually(session, "5s").Should(gexec.Exit(1))
-			})
+			// TODO: Validate what this error is and what the error message looks like for users.
+			Eventually(session, "5s").Should(gexec.Exit(1))
 		})
 	})
 
@@ -268,7 +260,7 @@ var _ = Describe("Acceptance", func() {
 		It("returns a helpful error message", func() {
 			session, err := gexec.Start(exec.Command(aloneBin, "-c", EnvoyFixture), GinkgoWriter, GinkgoWriter)
 			Expect(err).NotTo(HaveOccurred())
-			Eventually(session).Should(gbytes.Say("envoy-nginx application: stat nginx.exe:"))
+			Eventually(session).Should(gbytes.Say("envoy-nginx application: get nginx-path: stat nginx.exe:"))
 			Eventually(session, "2s").ShouldNot(gexec.Exit(0))
 		})
 
@@ -277,3 +269,13 @@ var _ = Describe("Acceptance", func() {
 		})
 	})
 })
+
+func findNginxConfDir(args []string) string {
+	confDir := ""
+	for i, arg := range args {
+		if arg == "-p" && len(args) > i+1 {
+			confDir = strings.TrimSpace(args[i+1])
+		}
+	}
+	return confDir
+}
