@@ -98,7 +98,33 @@ var _ = Describe("App", func() {
 				err := application.Load(nginxPath, SdsCreds, SdsValidation)
 				Expect(err).To(MatchError("cmd run: banana"))
 
+				Expect(logger.PrintlnCall.Messages).To(ContainElement(ContainSubstring("start nginx: ")))
+
 				nginxConfDir = cmd.RunCall.Receives[0].Args[3]
+			})
+		})
+
+		Context("when nginx conf parser generate fails", func() {
+			BeforeEach(func() {
+				// TODO: When nginxConfParser is an object on app, then we can test it's errors
+				// nginxConfParser.GenerateCall.Returns.Error = errors.New("banana")
+			})
+
+			PIt("returns a helpful error", func() {
+				err := application.Load(nginxPath, SdsCreds, SdsValidation)
+				Expect(err).To(MatchError("generate nginx config from envoy config: banana"))
+			})
+		})
+
+		Context("when nginx conf parser write tls files fails", func() {
+			BeforeEach(func() {
+				// TODO: When nginxConfParser is an object on app, then we can test it's errors
+				// nginxConfParser.WriteTlsFilesCall.Returns.Error = errors.New("banana")
+			})
+
+			PIt("returns a helpful error", func() {
+				err := application.Load(nginxPath, SdsCreds, SdsValidation)
+				Expect(err).To(MatchError("write tls files: banana"))
 			})
 		})
 	})

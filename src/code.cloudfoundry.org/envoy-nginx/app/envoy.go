@@ -54,6 +54,10 @@ func (a App) GetNginxPath() (path string, err error) {
 	return nginxPath, nil
 }
 
+// Setting up nginx config and directory.
+// Creating two goroutines: one to watch the sds creds file
+// and reload nginx when the creds rotate, the other to start
+// nginx.
 func (a App) Load(nginxPath, sdsCreds, sdsValidation string) error {
 	log.SetOutput(os.Stdout)
 
@@ -73,12 +77,6 @@ func (a App) Load(nginxPath, sdsCreds, sdsValidation string) error {
 
 	nginxConfParser := parser.NewNginxConfig(envoyConfParser, sdsCredParser, sdsValidationParser, confDir)
 
-	/*
-	* The idea here is that the main line of execution waits for any errors
-	* on the @errorChan.
-	* There are 2 go funcs spun out - (1) executing nginx and (2) watching the SDS file.
-	* They publish errors (if any) to this error channel
-	 */
 	errorChan := make(chan error)
 	readyChan := make(chan bool)
 
@@ -87,8 +85,7 @@ func (a App) Load(nginxPath, sdsCreds, sdsValidation string) error {
 			log.Printf("detected change in sdsfile (%s)\n", sdsCreds)
 			sdsFd, err := os.Stat(sdsCreds)
 			if err != nil {
-				// TODO: Format & test error
-				return err
+				return fmt.Errorf("stat sds-server-cert-and-key.yaml: %s", err)
 			}
 			/* It's observed that sometimes fsnotify may provide a double notification
 			* with one of the notifications reporting an empty file. NOOP in that case
@@ -114,6 +111,8 @@ func (a App) Load(nginxPath, sdsCreds, sdsValidation string) error {
 	return nil
 }
 
+// Rotates cert, key, and ca cert in nginx config directory.
+// Reloads nginx.
 func reloadNginx(nginxPath string, nginxConfParser parser.NginxConfig) error {
 	log.Println("envoy.exe: about to reload nginx")
 
@@ -134,6 +133,9 @@ func reloadNginx(nginxPath string, nginxConfParser parser.NginxConfig) error {
 	return c.Run()
 }
 
+// Generates nginx config from envoy config.
+// Writes cert, key, and ca cert to files in nginx config directory.
+// Starts nginx.
 func (a App) startNginx(nginxPath string, nginxConfParser parser.NginxConfig, envoyConf string) error {
 	confFile, err := nginxConfParser.Generate(envoyConf)
 	if err != nil {
@@ -147,7 +149,7 @@ func (a App) startNginx(nginxPath string, nginxConfParser parser.NginxConfig, en
 
 	confDir := nginxConfParser.GetConfDir()
 
-	log.Println("envoy.exe: Executing:", nginxPath, "-c", confFile, "-p", confDir)
+	a.logger.Println(fmt.Sprintf("start nginx: %s -c %s -p %s", nginxPath, confFile, confDir))
 
 	err = a.cmd.Run(nginxPath, "-c", confFile, "-p", confDir)
 	if err != nil {
