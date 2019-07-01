@@ -31,15 +31,14 @@ var _ = Describe("Acceptance", func() {
 	)
 
 	BeforeEach(func() {
-		var err error
-		envoyNginxBin, err = gexec.Build("code.cloudfoundry.org/envoy-nginx")
+		bin, err := gexec.Build("code.cloudfoundry.org/envoy-nginx")
 		Expect(err).ToNot(HaveOccurred())
 
 		binParentDir, err = ioutil.TempDir("", "envoy-nginx")
 		Expect(err).ToNot(HaveOccurred())
 
-		basename := filepath.Base(envoyNginxBin)
-		err = os.Rename(envoyNginxBin, filepath.Join(binParentDir, basename))
+		basename := filepath.Base(bin)
+		err = os.Rename(bin, filepath.Join(binParentDir, basename))
 		Expect(err).ToNot(HaveOccurred())
 		envoyNginxBin = filepath.Join(binParentDir, basename)
 
@@ -158,29 +157,6 @@ var _ = Describe("Acceptance", func() {
 				names = append(names, file.Name())
 			}
 			Expect(names).To(ConsistOf("logs", "envoy_nginx.conf", "cert.pem", "key.pem", "ca.pem"))
-
-			expectedCert := `-----BEGIN CERTIFICATE-----
-<<EXPECTED CERT 1>>
------END CERTIFICATE-----
------BEGIN CERTIFICATE-----
-<<EXPECTED CERT 2>>
------END CERTIFICATE-----
-`
-			expectedKey := `-----BEGIN RSA PRIVATE KEY-----
-<<EXPECTED KEY>>
------END RSA PRIVATE KEY-----
-`
-			certFile := filepath.Join(confDir, "cert.pem")
-			keyFile := filepath.Join(confDir, "key.pem")
-
-			currentCert, err := ioutil.ReadFile(certFile)
-			Expect(err).ShouldNot(HaveOccurred())
-
-			currentKey, err := ioutil.ReadFile(keyFile)
-			Expect(err).ShouldNot(HaveOccurred())
-
-			Expect(string(currentCert)).To(Equal(expectedCert))
-			Expect(string(currentKey)).To(Equal(expectedKey))
 		})
 	})
 
