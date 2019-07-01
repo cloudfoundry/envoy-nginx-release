@@ -3,7 +3,6 @@ package app_test
 import (
 	"errors"
 	"os"
-	"path/filepath"
 
 	"code.cloudfoundry.org/envoy-nginx/app"
 	"code.cloudfoundry.org/envoy-nginx/app/fakes"
@@ -44,19 +43,6 @@ var _ = Describe("App", func() {
 
 	Describe("NginxPath", func() {
 		Context("when nginx.exe is in the same path as our app", func() {
-			BeforeEach(func() {
-				withExe := filepath.Join(filepath.Dir(nginxPath), "nginx.exe")
-				err := os.Rename(nginxPath, withExe)
-				Expect(err).NotTo(HaveOccurred())
-
-				nginxPath = withExe
-			})
-
-			AfterEach(func() {
-				err := os.Remove(nginxPath)
-				Expect(err).NotTo(HaveOccurred())
-			})
-
 			PIt("returns the path to nginx.exe", func() {
 				path, err := application.GetNginxPath()
 				Expect(err).NotTo(HaveOccurred())
@@ -74,12 +60,23 @@ var _ = Describe("App", func() {
 	})
 
 	Describe("Load", func() {
-		It("loads the configurations for nginx and envoy", func() {
+		var nginxConfDir string
+
+		AfterEach(func() {
+			err := os.RemoveAll(nginxConfDir)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("starts nginx", func() {
 			err := application.Load(nginxPath, SdsCreds, SdsValidation)
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(cmd.RunCall.Receives[0].Binary).To(Equal(nginxPath))
-			Expect(cmd.RunCall.Receives[0].Args).To(ConsistOf("-c", ContainSubstring("envoy_nginx.conf"), "-p", ContainSubstring("nginx-conf")))
+			Expect(cmd.RunCall.Receives[0].Args).To(ConsistOf(
+				"-c", ContainSubstring("envoy_nginx.conf"),
+				"-p", ContainSubstring("nginx-conf"),
+			))
+			nginxConfDir = cmd.RunCall.Receives[0].Args[3]
 		})
 
 		Context("when running the command fails", func() {
@@ -90,6 +87,8 @@ var _ = Describe("App", func() {
 			It("returns a helpful error", func() {
 				err := application.Load(nginxPath, SdsCreds, SdsValidation)
 				Expect(err).To(MatchError("cmd run: banana"))
+
+				nginxConfDir = cmd.RunCall.Receives[0].Args[3]
 			})
 		})
 	})

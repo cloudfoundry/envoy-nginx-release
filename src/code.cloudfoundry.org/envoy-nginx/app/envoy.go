@@ -59,14 +59,12 @@ func (a App) Load(nginxPath, sdsCreds, sdsValidation string) error {
 
 	confDir, err := ioutil.TempDir("", "nginx-conf")
 	if err != nil {
-		// TODO: test error
-		return fmt.Errorf("create config dir at %s: %s", confDir, err)
+		return fmt.Errorf("create nginx-conf dir: %s", err)
 	}
 
-	err = os.Mkdir(fmt.Sprintf("%s/logs", confDir), os.ModePerm)
+	err = os.Mkdir(filepath.Join(confDir, "logs"), os.ModePerm)
 	if err != nil {
-		// TODO: test error
-		return fmt.Errorf("create logs dir in %s: %s", confDir, err)
+		return fmt.Errorf("create nginx-conf/logs dir: %s", err)
 	}
 
 	log.Println("generating nginx config")
