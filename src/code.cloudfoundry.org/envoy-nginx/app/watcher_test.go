@@ -27,6 +27,12 @@ var _ = Describe("Watcher", func() {
 			newFileFd, err := ioutil.TempFile("", "new-file")
 			Expect(err).ToNot(HaveOccurred())
 			newFile = newFileFd.Name()
+			newFileFd.Close()
+		})
+
+		AfterEach(func() {
+			Expect(os.Remove(watchmeFile)).NotTo(HaveOccurred())
+			Expect(os.Remove(newFile)).NotTo(HaveOccurred())
 		})
 
 		It("detects changes to the file and executes the callback, repeatedly", func() {
@@ -56,11 +62,6 @@ var _ = Describe("Watcher", func() {
 				Eventually(ch, "10s").Should(Receive(&str))
 				Expect(str).Should(Equal("message"))
 			}
-		})
-
-		AfterEach(func() {
-			Expect(os.Remove(watchmeFile)).NotTo(HaveOccurred())
-			Expect(os.Remove(newFile)).NotTo(HaveOccurred())
 		})
 	})
 })
