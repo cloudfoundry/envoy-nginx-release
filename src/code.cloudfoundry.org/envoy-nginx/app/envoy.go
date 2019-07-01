@@ -32,21 +32,28 @@ func (a App) Load(sdsCreds, sdsValidation string) error {
 	// locate nginx.exe in the same directory as the running executable
 	mypath, err := os.Executable()
 	if err != nil {
-		// TODO: Format & test error
-		return err
+		// TODO: test error
+		return fmt.Errorf("executable path: %s", err)
 	}
 
 	pwd := filepath.Dir(mypath)
 	nginxBin := filepath.Join(pwd, "nginx.exe")
 
-	if _, err = os.Stat(nginxBin); err != nil {
-		return fmt.Errorf("os stat nginx.exe: %s", err)
+	_, err = os.Stat(nginxBin)
+	if err != nil {
+		return fmt.Errorf("stat nginx.exe: %s", err)
 	}
 
 	confDir, err := ioutil.TempDir("", "nginx-conf")
 	if err != nil {
-		// TODO: Format & test error
-		return err
+		// TODO: test error
+		return fmt.Errorf("create config dir at %s: %s", confDir, err)
+	}
+
+	err = os.Mkdir(fmt.Sprintf("%s/logs", confDir), os.ModePerm)
+	if err != nil {
+		// TODO: test error
+		return fmt.Errorf("create logs dir in %s: %s", confDir, err)
 	}
 
 	log.Println("generating nginx config")

@@ -161,7 +161,7 @@ var _ = Describe("Acceptance", func() {
 			for _, file := range files {
 				names = append(names, file.Name())
 			}
-			Expect(names).To(ConsistOf("envoy_nginx.conf", "cert.pem", "key.pem", "ca.pem"))
+			Expect(names).To(ConsistOf("logs", "envoy_nginx.conf", "cert.pem", "key.pem", "ca.pem"))
 
 			expectedCert := `-----BEGIN CERTIFICATE-----
 <<EXPECTED CERT 1>>
@@ -268,7 +268,7 @@ var _ = Describe("Acceptance", func() {
 		It("returns a helpful error message", func() {
 			session, err := gexec.Start(exec.Command(aloneBin, "-c", EnvoyFixture), GinkgoWriter, GinkgoWriter)
 			Expect(err).NotTo(HaveOccurred())
-			Eventually(session).Should(gbytes.Say("envoy-nginx application: os stat nginx.exe:"))
+			Eventually(session).Should(gbytes.Say("envoy-nginx application: stat nginx.exe:"))
 			Eventually(session, "2s").ShouldNot(gexec.Exit(0))
 		})
 
