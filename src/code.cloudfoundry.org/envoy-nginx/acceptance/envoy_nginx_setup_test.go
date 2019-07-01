@@ -100,6 +100,8 @@ var _ = Describe("Acceptance", func() {
 			Eventually(session, "5s").Should(gexec.Exit())
 
 			Expect(os.RemoveAll(confDir)).NotTo(HaveOccurred())
+
+			gexec.CleanupBuildArtifacts()
 		})
 
 		Context("when the sds file is rotated", func() {
