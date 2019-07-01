@@ -23,11 +23,10 @@ const (
 
 var _ = Describe("Acceptance", func() {
 	var (
-		envoyNginxBin     string
-		binParentDir      string
-		sdsCredsFile      string
-		sdsValidationFile string
-		cmd               *exec.Cmd
+		envoyNginxBin string
+		binParentDir  string
+		sdsCredsFile  string
+		cmd           *exec.Cmd
 	)
 
 	BeforeEach(func() {
@@ -49,21 +48,11 @@ var _ = Describe("Acceptance", func() {
 		err = CopyFile(SdsCredsFixture, sdsCredsFile)
 		Expect(err).ToNot(HaveOccurred())
 
-		tmp, err = ioutil.TempFile("", "sdsValidation")
-		Expect(err).ToNot(HaveOccurred())
-		sdsValidationFile = tmp.Name()
-		tmp.Close()
-		err = CopyFile(SdsValidationFixture, sdsValidationFile)
-		Expect(err).ToNot(HaveOccurred())
-
-		cmd = exec.Command(envoyNginxBin, "-c", EnvoyFixture, "--creds", sdsCredsFile, "--validation", sdsValidationFile)
+		cmd = exec.Command(envoyNginxBin, "-c", EnvoyFixture, "--creds", sdsCredsFile, "--validation", SdsValidationFixture)
 	})
 
 	AfterEach(func() {
 		Expect(os.Remove(sdsCredsFile)).NotTo(HaveOccurred())
-
-		Expect(os.Remove(sdsValidationFile)).NotTo(HaveOccurred())
-
 		Expect(os.RemoveAll(binParentDir)).NotTo(HaveOccurred())
 	})
 
