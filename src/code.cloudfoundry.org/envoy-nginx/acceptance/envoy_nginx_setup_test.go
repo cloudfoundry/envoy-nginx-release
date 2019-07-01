@@ -125,38 +125,6 @@ var _ = Describe("Acceptance", func() {
 			})
 		})
 	})
-
-	Context("nginx.exe fails when reloaded", func() {
-		BeforeEach(func() {
-			nginxBin, err := gexec.Build("code.cloudfoundry.org/envoy-nginx/fixtures/bad-nginx-reload")
-			Expect(err).ToNot(HaveOccurred())
-
-			err = os.Rename(nginxBin, filepath.Join(binParentDir, "nginx.exe"))
-			Expect(err).ToNot(HaveOccurred())
-		})
-
-		AfterEach(func() {
-			// TODO: this test is orphaning the nginx-conf temporary directoy. Need to clean it up.
-		})
-
-		It("exits with error", func() {
-			session, err := gexec.Start(cmd, GinkgoWriter, GinkgoWriter)
-			Expect(err).ToNot(HaveOccurred())
-
-			// The output of the "fake" nginx.exe will always have a comma
-			// Include this line so that the file watcher will have a chance to start
-			Eventually(session.Out).Should(gbytes.Say(","))
-
-			By("simulating the cert/key rotation by diego")
-			err = RotateCert("../fixtures/cf_assets_envoy_config/sds-server-cert-and-key-rotated.yaml", sdsCredsFile)
-			Expect(err).ToNot(HaveOccurred())
-
-			Eventually(session.Out).Should(gbytes.Say("-s,reload"))
-
-			// TODO: Validate what this error is and what the error message looks like for users.
-			Eventually(session, "5s").Should(gexec.Exit(1))
-		})
-	})
 })
 
 func findNginxConfDir(args []string) string {
