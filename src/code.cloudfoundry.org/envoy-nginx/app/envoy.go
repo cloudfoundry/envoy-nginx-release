@@ -67,7 +67,6 @@ func (a App) Load(nginxPath, sdsCreds, sdsValidation string) error {
 		return fmt.Errorf("create nginx-conf/logs dir: %s", err)
 	}
 
-	log.Println("generating nginx config")
 	envoyConfParser := parser.NewEnvoyConfParser()
 	sdsCredParser := parser.NewSdsCredParser(sdsCreds)
 	sdsValidationParser := parser.NewSdsServerValidationParser(sdsValidation)
@@ -109,7 +108,6 @@ func (a App) Load(nginxPath, sdsCreds, sdsValidation string) error {
 
 	err = <-errorChan
 	if err != nil {
-		// TODO: Format & test error
 		return err
 	}
 
@@ -126,12 +124,10 @@ func reloadNginx(nginxPath string, nginxConfParser parser.NginxConfig) error {
 
 	confDir := nginxConfParser.GetConfDir()
 	confFile := nginxConfParser.GetConfFile()
-	/*
-	* The reason we need to be explicit about the the -c and -p is because the nginx.exe
-	* we use (as of date) is wired during compilation to use "./conf/nginx.conf" as
-	 */
+
 	log.Println("envoy.exe: about to issue -s reload")
 	log.Println("envoy.exe: Executing:", nginxPath, "-c", confFile, "-p", confDir, "-s", "reload")
+
 	c := exec.Command(nginxPath, "-c", confFile, "-p", confDir, "-s", "reload")
 	c.Stdout = os.Stdout
 	c.Stderr = os.Stderr
@@ -141,12 +137,12 @@ func reloadNginx(nginxPath string, nginxConfParser parser.NginxConfig) error {
 func (a App) startNginx(nginxPath string, nginxConfParser parser.NginxConfig, envoyConf string) error {
 	confFile, err := nginxConfParser.Generate(envoyConf)
 	if err != nil {
-		return fmt.Errorf("Generating nginx config from envoy config: %s", err)
+		return fmt.Errorf("generate nginx config from envoy config: %s", err)
 	}
 
 	err = nginxConfParser.WriteTLSFiles()
 	if err != nil {
-		return fmt.Errorf("Failed to write tls files: %s", err)
+		return fmt.Errorf("write tls files: %s", err)
 	}
 
 	confDir := nginxConfParser.GetConfDir()
