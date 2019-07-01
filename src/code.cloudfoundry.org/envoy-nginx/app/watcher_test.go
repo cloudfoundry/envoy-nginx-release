@@ -59,8 +59,8 @@ var _ = Describe("Watcher", func() {
 		})
 
 		AfterEach(func() {
-			os.Remove(watchmeFile)
-			os.Remove(newFile)
+			Expect(os.Remove(watchmeFile)).NotTo(HaveOccurred())
+			Expect(os.Remove(newFile)).NotTo(HaveOccurred())
 		})
 	})
 })
