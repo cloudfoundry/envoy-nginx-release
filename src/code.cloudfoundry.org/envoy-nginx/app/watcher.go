@@ -26,8 +26,7 @@ func WatchFile(filepath string, readyChan chan bool, callback func() error) erro
 				if event.Op&fsnotify.Create == fsnotify.Create ||
 					event.Op&fsnotify.Write == fsnotify.Write ||
 					event.Op&fsnotify.Remove == fsnotify.Remove ||
-					event.Op&fsnotify.Rename == fsnotify.Rename ||
-					event.Op&fsnotify.Chmod == fsnotify.Chmod {
+					event.Op&fsnotify.Rename == fsnotify.Rename {
 
 					/*
 					* It is important to re-add because though the filepath hasn't changed,
