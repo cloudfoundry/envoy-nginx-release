@@ -1,28 +1,21 @@
 package testhelpers
 
 import (
-	"io"
 	"io/ioutil"
 	"os"
 )
 
 func CopyFile(src, dst string) error {
-	destFile, err := os.Create(dst)
+	input, err := ioutil.ReadFile(src)
 	if err != nil {
 		return err
 	}
-	defer destFile.Close()
 
-	srcFile, err := os.Open(src)
+	err = ioutil.WriteFile(dst, input, 0644)
 	if err != nil {
 		return err
 	}
-	defer srcFile.Close()
 
-	_, err = io.Copy(destFile, srcFile)
-	if err != nil {
-		return err
-	}
 	return nil
 }
 

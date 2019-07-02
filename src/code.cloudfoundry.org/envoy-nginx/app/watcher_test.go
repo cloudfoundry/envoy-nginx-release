@@ -24,6 +24,7 @@ var _ = Describe("Watcher", func() {
 			Expect(err).ToNot(HaveOccurred())
 			watchmeFile = watchmeFd.Name()
 			watchmeFd.Close()
+
 			newFileFd, err := ioutil.TempFile("", "new-file")
 			Expect(err).ToNot(HaveOccurred())
 			newFile = newFileFd.Name()
