@@ -66,6 +66,11 @@ func (a App) Load(nginxPath, sdsCreds, sdsValidation string) error {
 		return fmt.Errorf("create nginx-conf dir: %s", err)
 	}
 
+	/*
+	* The only reason to do this to suppress the nginx error complaining about
+	* missing "logs/error.log". This is because the nginx.exe in the blob
+	* was compiled this location wired into it.
+	 */
 	err = os.Mkdir(filepath.Join(confDir, "logs"), os.ModePerm)
 	if err != nil {
 		return fmt.Errorf("create nginx-conf/logs dir: %s", err)
