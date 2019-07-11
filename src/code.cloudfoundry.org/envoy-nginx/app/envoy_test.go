@@ -20,8 +20,10 @@ const (
 
 var _ = Describe("App", func() {
 	var (
-		logger    *fakes.Logger
-		cmd       *fakes.Cmd
+		logger *fakes.Logger
+		cmd    *fakes.Cmd
+		tailer *fakes.Tailer
+
 		nginxPath string
 
 		application app.App
@@ -30,12 +32,13 @@ var _ = Describe("App", func() {
 	BeforeEach(func() {
 		logger = &fakes.Logger{}
 		cmd = &fakes.Cmd{}
+		tailer = &fakes.Tailer{}
 
 		var err error
 		nginxPath, err = gexec.Build("code.cloudfoundry.org/envoy-nginx/fixtures/nginx")
 		Expect(err).ToNot(HaveOccurred())
 
-		application = app.NewApp(logger, cmd, EnvoyConfig)
+		application = app.NewApp(logger, cmd, tailer, EnvoyConfig)
 	})
 
 	AfterEach(func() {

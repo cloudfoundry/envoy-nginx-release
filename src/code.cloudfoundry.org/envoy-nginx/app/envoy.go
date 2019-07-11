@@ -12,24 +12,30 @@ import (
 )
 
 type App struct {
-	envoyConfig string
 	logger      logger
 	cmd         cmd
+	tailer      tailer
+	envoyConfig string
 }
 
 type logger interface {
 	Println(string)
 }
 
+type tailer interface {
+	Tail(string)
+}
+
 type cmd interface {
 	Run(string, ...string) error
 }
 
-func NewApp(logger logger, cmd cmd, envoyConfig string) App {
+func NewApp(logger logger, cmd cmd, tailer tailer, envoyConfig string) App {
 	return App{
-		envoyConfig: envoyConfig,
 		logger:      logger,
 		cmd:         cmd,
+		tailer:      tailer,
+		envoyConfig: envoyConfig,
 	}
 }
 
@@ -153,6 +159,8 @@ func (a App) startNginx(nginxPath string, nginxConfParser parser.NginxConfig, en
 	}
 
 	confDir := nginxConfParser.GetConfDir()
+
+	go a.tailer.Tail(filepath.Join(confDir, "logs", "error.log"))
 
 	a.logger.Println(fmt.Sprintf("start nginx: %s -c %s -p %s", nginxPath, confFile, confDir))
 

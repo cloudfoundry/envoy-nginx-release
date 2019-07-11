@@ -128,7 +128,7 @@ func (n NginxConfig) Generate(envoyConfFile string) (string, error) {
 worker_processes  1;
 daemon on;
 
-error_log stderr;
+error_log logs/error.log;
 pid %s;
 
 events {
@@ -137,6 +137,10 @@ events {
 
 
 stream {
+ log_format basic '$remote_addr [$time_local] '
+                  '$protocol $status $bytes_sent $bytes_received '
+                  '$session_time';
+  access_log access.log basic;
 	%s
 }
 `, convertToUnixPath(n.pidFile),
