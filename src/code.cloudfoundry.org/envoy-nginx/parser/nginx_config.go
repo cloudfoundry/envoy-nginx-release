@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 	"text/template"
@@ -13,6 +14,7 @@ const FilePerm = 0644
 
 type BaseTemplate struct {
 	UpstreamAddress, UpstreamPort, ListenerPort, Name, Key, Cert, TrustedCA string
+	TLS                                                                     bool
 }
 
 type envoyConfParser interface {
@@ -61,16 +63,14 @@ func (n NginxConfig) GetConfFile() string {
 	return n.confFile
 }
 
-/* Convert windows paths to unix paths */
+// Convert windows paths to unix paths
 func convertToUnixPath(path string) string {
 	path = strings.Replace(path, "C:", "", -1)
 	path = strings.Replace(path, "\\", "/", -1)
 	return path
 }
 
-/* Generates NGINX config file.
- *  There's aleady an nginx.conf in the blob but it's just a placeholder.
- */
+// Generates NGINX config file.
 func (n NginxConfig) Generate(envoyConfFile string) (string, error) {
 	clusters, nameToPortMap, err := n.envoyConfParser.GetClusters(envoyConfFile)
 	if err != nil {
@@ -86,8 +86,10 @@ func (n NginxConfig) Generate(envoyConfFile string) (string, error) {
         listen {{.ListenerPort}} ssl;
         ssl_certificate        {{.Cert}};
         ssl_certificate_key    {{.Key}};
+        {{ if .TLS }}
         ssl_client_certificate {{.TrustedCA}};
         ssl_verify_client on;
+        {{ end }}
         proxy_pass {{.Name}};
     }
 	`
@@ -100,6 +102,12 @@ func (n NginxConfig) Generate(envoyConfFile string) (string, error) {
 	unixCert := convertToUnixPath(n.certFile)
 	unixKey := convertToUnixPath(n.keyFile)
 	unixCA := convertToUnixPath(n.trustedCAFile)
+
+	// If there is no trusted CA file, disable tls.
+	tls := true
+	if _, err := os.Stat(n.trustedCAFile); os.IsNotExist(err) {
+		tls = false
+	}
 
 	//Execute the template for each socket address
 	for _, c := range clusters {
@@ -115,6 +123,7 @@ func (n NginxConfig) Generate(envoyConfFile string) (string, error) {
 			Cert:            unixCert,
 			Key:             unixKey,
 			TrustedCA:       unixCA,
+			TLS:             tls,
 			ListenerPort:    listenerPort,
 		}
 
@@ -152,27 +161,32 @@ stream {
 func (n NginxConfig) WriteTLSFiles() error {
 	cert, key, err := n.sdsCredParser.GetCertAndKey()
 	if err != nil {
-		return fmt.Errorf("Failed to get cert and key from sds file: %s", err)
+		return fmt.Errorf("get cert and key from sds server cred parser: %s", err)
 	}
 
 	err = ioutil.WriteFile(n.certFile, []byte(cert), FilePerm)
 	if err != nil {
-		return fmt.Errorf("Failed to write cert file: %s", err)
+		return fmt.Errorf("write cert: %s", err)
 	}
 
 	err = ioutil.WriteFile(n.keyFile, []byte(key), FilePerm)
 	if err != nil {
-		return fmt.Errorf("Failed to write key file: %s", err)
+		return fmt.Errorf("write key: %s", err)
 	}
 
 	caCert, err := n.sdsValidationParser.GetCACert()
 	if err != nil {
-		return fmt.Errorf("Failed to get ca cert from sds server validation context file: %s", err)
+		return fmt.Errorf("get ca cert from sds server validation parser: %s", err)
+	}
+
+	// If there is no CA Cert, do not write the ca.pem.
+	if len(caCert) == 0 {
+		return nil
 	}
 
 	err = ioutil.WriteFile(n.trustedCAFile, []byte(caCert), FilePerm)
 	if err != nil {
-		return fmt.Errorf("Failed to write ca cert file: %s", err)
+		return fmt.Errorf("write ca cert file: %s", err)
 	}
 
 	return nil

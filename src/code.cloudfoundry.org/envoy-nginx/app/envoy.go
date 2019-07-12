@@ -141,14 +141,14 @@ func reloadNginx(nginxPath string, nginxConfParser parser.NginxConfig) error {
 // Writes cert, key, and ca cert to files in nginx config directory.
 // Starts nginx.
 func (a App) startNginx(nginxPath string, nginxConfParser parser.NginxConfig, envoyConf string) error {
+	err := nginxConfParser.WriteTLSFiles()
+	if err != nil {
+		return fmt.Errorf("write tls files: %s", err)
+	}
+
 	confFile, err := nginxConfParser.Generate(envoyConf)
 	if err != nil {
 		return fmt.Errorf("generate nginx config from envoy config: %s", err)
-	}
-
-	err = nginxConfParser.WriteTLSFiles()
-	if err != nil {
-		return fmt.Errorf("write tls files: %s", err)
 	}
 
 	confDir := nginxConfParser.GetConfDir()

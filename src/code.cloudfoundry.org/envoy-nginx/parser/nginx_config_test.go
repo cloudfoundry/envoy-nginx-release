@@ -82,7 +82,7 @@ var _ = Describe("Nginx Config", func() {
 
 			It("returns a helpful error message", func() {
 				err := nginxConfig.WriteTLSFiles()
-				Expect(err).To(MatchError("Failed to get cert and key from sds file: banana"))
+				Expect(err).To(MatchError("get cert and key from sds server cred parser: banana"))
 			})
 		})
 
@@ -93,7 +93,22 @@ var _ = Describe("Nginx Config", func() {
 
 			It("returns a helpful error message", func() {
 				err := nginxConfig.WriteTLSFiles()
-				Expect(err).To(MatchError("Failed to get ca cert from sds server validation context file: banana"))
+				Expect(err).To(MatchError("get ca cert from sds server validation parser: banana"))
+			})
+		})
+
+		Context("when sds validation context parser returns an empty ca", func() {
+			BeforeEach(func() {
+				sdsValidationParser.GetCACertCall.Returns.CA = ""
+			})
+
+			It("does not create a ca.pem", func() {
+				err := nginxConfig.WriteTLSFiles()
+				Expect(err).ShouldNot(HaveOccurred())
+
+				caPath := filepath.Join(tmpdir, "ca.pem")
+				_, err = os.Stat(caPath)
+				Expect(err).To(HaveOccurred())
 			})
 		})
 	})
@@ -110,6 +125,10 @@ var _ = Describe("Nginx Config", func() {
 
 		Describe("Good configuration", func() {
 			BeforeEach(func() {
+				ioutil.WriteFile(filepath.Join(tmpdir, "cert.pem"), []byte(""), 0744)
+				ioutil.WriteFile(filepath.Join(tmpdir, "key.pem"), []byte(""), 0744)
+				ioutil.WriteFile(filepath.Join(tmpdir, "ca.pem"), []byte(""), 0744)
+
 				var err error
 				configFile, err = nginxConfig.Generate(envoyConfFile)
 				Expect(err).ShouldNot(HaveOccurred())
@@ -209,6 +228,31 @@ var _ = Describe("Nginx Config", func() {
 						sslCACertLine := re.Find(config)
 						Expect(sslCACertLine).NotTo(BeNil())
 					})
+				})
+			})
+
+			Context("when trusted ca certificates are not provided", func() {
+				BeforeEach(func() {
+					caPath := filepath.Join(tmpdir, "ca.pem")
+					os.Remove(caPath)
+
+					configFile, err := nginxConfig.Generate(envoyConfFile)
+					Expect(err).ShouldNot(HaveOccurred())
+
+					config, err = ioutil.ReadFile(configFile)
+					Expect(err).ShouldNot(HaveOccurred())
+				})
+
+				It("should not verify the ssl client certificate", func() {
+					Expect(string(config)).NotTo(ContainSubstring("ssl_verify_client on"))
+				})
+
+				It("should not include the ssl_client_certificate directive", func() {
+					caPath := filepath.Join(tmpdir, "ca.pem")
+					matcher := fmt.Sprintf(`[\r\n]\s*ssl_client_certificate\s*%s;`, convertToUnixPath(caPath))
+					re := regexp.MustCompile(matcher)
+					sslCACertLine := re.Find(config)
+					Expect(sslCACertLine).To(BeNil())
 				})
 			})
 		})
