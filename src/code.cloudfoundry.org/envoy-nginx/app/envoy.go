@@ -23,7 +23,7 @@ type logger interface {
 }
 
 type tailer interface {
-	Tail(string)
+	Tail(string) error
 }
 
 type cmd interface {
@@ -153,7 +153,11 @@ func (a App) startNginx(nginxPath string, nginxConfParser parser.NginxConfig, en
 
 	confDir := nginxConfParser.GetConfDir()
 
-	go a.tailer.Tail(filepath.Join(confDir, "logs", "error.log"))
+	a.logger.Println("envoy-nginx application: tailing error log")
+	err = a.tailer.Tail(filepath.Join(confDir, "logs", "error.log"))
+	if err != nil {
+		return fmt.Errorf("tail error log: %s", err)
+	}
 
 	a.logger.Println(fmt.Sprintf("envoy-nginx application: start nginx: %s -c %s -p %s", nginxPath, confFile, confDir))
 

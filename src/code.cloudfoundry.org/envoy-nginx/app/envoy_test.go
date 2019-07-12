@@ -107,6 +107,17 @@ var _ = Describe("App", func() {
 			})
 		})
 
+		Context("when tailing error.log fails", func() {
+			BeforeEach(func() {
+				tailer.TailCall.Returns.Error = errors.New("banana")
+			})
+
+			It("returns a helpful error", func() {
+				err := application.Load(nginxPath, SdsCreds, SdsValidation)
+				Expect(err).To(MatchError("tail error log: banana"))
+			})
+		})
+
 		Context("when nginx conf parser generate fails", func() {
 			BeforeEach(func() {
 				// TODO: When nginxConfParser is an object on app, then we can test it's errors

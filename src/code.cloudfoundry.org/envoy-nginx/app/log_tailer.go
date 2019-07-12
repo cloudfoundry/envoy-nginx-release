@@ -1,6 +1,7 @@
 package app
 
 import (
+	"fmt"
 	"io/ioutil"
 
 	"github.com/hpcloud/tail"
@@ -16,26 +17,28 @@ func NewLogTailer(logger logger) LogTailer {
 	}
 }
 
-func (l LogTailer) Tail(errorLog string) {
-	// TODO: TailFile will wait till the file is created by nginx.
-	// Can we skip writing it ourselves?
+func (l LogTailer) Tail(errorLog string) error {
 	err := ioutil.WriteFile(errorLog, []byte(""), 0755)
 	if err != nil {
-		// TODO: Log error
-		panic(err)
+		return fmt.Errorf("write error.log: %s", err)
 	}
 
 	t, err := tail.TailFile(errorLog, tail.Config{
 		Poll:   true,
 		ReOpen: true,
 		Follow: true,
+		// MustExist: false,
 	})
 	if err != nil {
-		// TODO: Log error
-		panic(err)
+		return fmt.Errorf("tail file: %s", err)
 	}
 
-	for line := range t.Lines {
-		l.logger.Println(line.Text)
-	}
+	go func() {
+		for line := range t.Lines {
+			l.logger.Println(line.Text)
+		}
+	}()
+
+	// TODO: Handle EOF?
+	return nil
 }
