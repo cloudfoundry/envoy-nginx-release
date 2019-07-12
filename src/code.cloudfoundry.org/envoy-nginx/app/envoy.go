@@ -72,14 +72,9 @@ func (a App) Load(nginxPath, sdsCreds, sdsValidation string) error {
 		return fmt.Errorf("create nginx-conf dir: %s", err)
 	}
 
-	/*
-	* The only reason to do this to suppress the nginx error complaining about
-	* missing "logs/error.log". This is because the nginx.exe in the blob
-	* was compiled this location wired into it.
-	 */
 	err = os.Mkdir(filepath.Join(confDir, "logs"), os.ModePerm)
 	if err != nil {
-		return fmt.Errorf("create nginx-conf/logs dir: %s", err)
+		return fmt.Errorf("create nginx-conf/logs dir for error.log: %s", err)
 	}
 
 	envoyConfParser := parser.NewEnvoyConfParser()
@@ -94,6 +89,7 @@ func (a App) Load(nginxPath, sdsCreds, sdsValidation string) error {
 	go func() {
 		errorChan <- WatchFile(sdsCreds, readyChan, func() error {
 			log.Printf("detected change in sdsfile (%s)\n", sdsCreds)
+
 			sdsFd, err := os.Stat(sdsCreds)
 			if err != nil {
 				return fmt.Errorf("stat sds-server-cert-and-key.yaml: %s", err)
@@ -125,18 +121,15 @@ func (a App) Load(nginxPath, sdsCreds, sdsValidation string) error {
 // Rotates cert, key, and ca cert in nginx config directory.
 // Reloads nginx.
 func reloadNginx(nginxPath string, nginxConfParser parser.NginxConfig) error {
-	log.Println("envoy.exe: about to reload nginx")
-
 	err := nginxConfParser.WriteTLSFiles()
 	if err != nil {
-		return fmt.Errorf("Failed to write tls files: %s", err)
+		return fmt.Errorf("write tls files: %s", err)
 	}
 
 	confDir := nginxConfParser.GetConfDir()
 	confFile := nginxConfParser.GetConfFile()
 
-	log.Println("envoy.exe: about to issue -s reload")
-	log.Println("envoy.exe: Executing:", nginxPath, "-c", confFile, "-p", confDir, "-s", "reload")
+	log.Println("envoy-nginx application: reload nginx:", nginxPath, "-c", confFile, "-p", confDir, "-s", "reload")
 
 	c := exec.Command(nginxPath, "-c", confFile, "-p", confDir, "-s", "reload")
 	c.Stdout = os.Stdout
@@ -162,7 +155,7 @@ func (a App) startNginx(nginxPath string, nginxConfParser parser.NginxConfig, en
 
 	go a.tailer.Tail(filepath.Join(confDir, "logs", "error.log"))
 
-	a.logger.Println(fmt.Sprintf("start nginx: %s -c %s -p %s", nginxPath, confFile, confDir))
+	a.logger.Println(fmt.Sprintf("envoy-nginx application: start nginx: %s -c %s -p %s", nginxPath, confFile, confDir))
 
 	err = a.cmd.Run(nginxPath, "-c", confFile, "-p", confDir)
 	if err != nil {
