@@ -11,10 +11,12 @@ func main() {
 	flags := app.NewFlags()
 	opts := flags.Parse(os.Args[1:])
 
-	logger := app.NewLogger(os.Stdout)
-	tailer := app.NewLogTailer(logger)
+	stderr := app.NewLogger(os.Stderr)
+	tailer := app.NewLogTailer(stderr)
+
 	cmd := app.NewCmd(os.Stdout, os.Stderr)
-	application := app.NewApp(logger, cmd, tailer, opts.EnvoyConfig)
+	stdout := app.NewLogger(os.Stdout)
+	application := app.NewApp(stdout, cmd, tailer, opts.EnvoyConfig)
 
 	nginxPath, err := application.GetNginxPath()
 	if err != nil {
