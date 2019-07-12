@@ -135,12 +135,7 @@ events {
     worker_connections  1024;
 }
 
-
 stream {
- log_format basic '$remote_addr [$time_local] '
-                  '$protocol $status $bytes_sent $bytes_received '
-                  '$session_time';
-  access_log access.log basic;
 	%s
 }
 `, convertToUnixPath(n.pidFile),
