@@ -13,8 +13,14 @@ import (
 const FilePerm = 0644
 
 type BaseTemplate struct {
-	UpstreamAddress, UpstreamPort, ListenerPort, Name, Key, Cert, TrustedCA string
-	TLS                                                                     bool
+	UpstreamAddress string
+	UpstreamPort    string
+	ListenerPort    string
+	Name            string
+	Key             string
+	Cert            string
+	TrustedCA       string
+	MTLS            bool
 }
 
 type envoyConfParser interface {
@@ -86,7 +92,7 @@ func (n NginxConfig) Generate(envoyConfFile string) (string, error) {
         listen {{.ListenerPort}} ssl;
         ssl_certificate        {{.Cert}};
         ssl_certificate_key    {{.Key}};
-        {{ if .TLS }}
+        {{ if .MTLS }}
         ssl_client_certificate {{.TrustedCA}};
         ssl_verify_client on;
         {{ end }}
@@ -103,10 +109,10 @@ func (n NginxConfig) Generate(envoyConfFile string) (string, error) {
 	unixKey := convertToUnixPath(n.keyFile)
 	unixCA := convertToUnixPath(n.trustedCAFile)
 
-	// If there is no trusted CA file, disable tls.
-	tls := true
+	// If there is no trusted CA file, disable mtls.
+	mtls := true
 	if _, err := os.Stat(n.trustedCAFile); os.IsNotExist(err) {
-		tls = false
+		mtls = false
 	}
 
 	//Execute the template for each socket address
@@ -123,7 +129,7 @@ func (n NginxConfig) Generate(envoyConfFile string) (string, error) {
 			Cert:            unixCert,
 			Key:             unixKey,
 			TrustedCA:       unixCA,
-			TLS:             tls,
+			MTLS:            mtls,
 			ListenerPort:    listenerPort,
 		}
 
