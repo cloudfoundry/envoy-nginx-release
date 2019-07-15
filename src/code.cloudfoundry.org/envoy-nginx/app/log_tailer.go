@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 
+	"code.cloudfoundry.org/envoy-nginx/parser"
 	"github.com/hpcloud/tail"
 )
 
@@ -18,7 +19,7 @@ func NewLogTailer(logger logger) LogTailer {
 }
 
 func (l LogTailer) Tail(errorLog string) error {
-	err := ioutil.WriteFile(errorLog, []byte(""), 0755)
+	err := ioutil.WriteFile(errorLog, []byte(""), parser.FilePerm)
 	if err != nil {
 		return fmt.Errorf("write error.log: %s", err)
 	}

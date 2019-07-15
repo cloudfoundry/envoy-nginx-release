@@ -1,0 +1,32 @@
+name: envoy-nginx-dep
+- azs:
+  - z1
+  instances: 1
+  jobs:
+  - name: windows2019fs
+    release: windowsfs
+  - name: envoy_windows
+    release: envoy-nginx
+  name: windows2019-cell
+  networks:
+  - name: default
+  stemcell: windows2019
+  vm_type: small-highmem
+
+releases:
+- name: envoy-nginx
+  version: latest
+- name: windowsfs
+  version: latest
+
+stemcells:
+- alias: windows2019
+  os: windows2019
+  version: latest
+
+update:
+  canaries: 1
+  canary_watch_time: 30000-1200000
+  max_in_flight: 1
+  serial: false
+  update_watch_time: 5000-1200000
