@@ -19,6 +19,9 @@ func NewLogTailer(logger logger) LogTailer {
 }
 
 func (l LogTailer) Tail(errorLog string) error {
+	// TODO: We should not have to create this file.
+	// hpcloud/tail will wait for the file to exist
+	// so we can wait for nginx to creaet it.
 	err := ioutil.WriteFile(errorLog, []byte(""), parser.FilePerm)
 	if err != nil {
 		return fmt.Errorf("write error.log: %s", err)
