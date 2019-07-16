@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
-	"os"
 	"path/filepath"
 	"strings"
 	"text/template"
@@ -25,6 +24,7 @@ type BaseTemplate struct {
 
 type envoyConfParser interface {
 	GetClusters(file string) ([]Cluster, map[string]string, error)
+	GetMTLS(file string) (bool, error)
 }
 
 type sdsCredParser interface {
@@ -109,10 +109,9 @@ func (n NginxConfig) Generate(envoyConfFile string) (string, error) {
 	unixKey := convertToUnixPath(n.keyFile)
 	unixCA := convertToUnixPath(n.trustedCAFile)
 
-	// If there is no trusted CA file, disable mtls.
-	mtls := true
-	if _, err := os.Stat(n.trustedCAFile); os.IsNotExist(err) {
-		mtls = false
+	mtlsEnabled, err := n.envoyConfParser.GetMTLS(envoyConfFile)
+	if err != nil {
+		return "", fmt.Errorf("get mtls from envoy config: %s", err)
 	}
 
 	//Execute the template for each socket address
@@ -129,8 +128,9 @@ func (n NginxConfig) Generate(envoyConfFile string) (string, error) {
 			Cert:            unixCert,
 			Key:             unixKey,
 			TrustedCA:       unixCA,
-			MTLS:            mtls,
-			ListenerPort:    listenerPort,
+			MTLS:            mtlsEnabled,
+
+			ListenerPort: listenerPort,
 		}
 
 		err = t.Execute(out, bts)
