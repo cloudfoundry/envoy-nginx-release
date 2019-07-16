@@ -1,0 +1,11 @@
+static_resources:
+  listeners:
+  - address:
+      socket_address:
+        address: 0.0.0.0
+        port_value: 61001
+    filter_chains:
+    - filters:
+      tls_context:
+        require_client_certificate: false
+    name: listener-8080

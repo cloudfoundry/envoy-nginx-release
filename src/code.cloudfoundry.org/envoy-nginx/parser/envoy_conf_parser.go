@@ -40,7 +40,8 @@ type Address struct {
 }
 
 type FilterChain struct {
-	Filters []Filter `yaml:"filters,omitempty"`
+	Filters    []Filter   `yaml:"filters,omitempty"`
+	TLSContext TLSContext `yaml:"tls_context,omitempty"`
 }
 
 type Filter struct {
@@ -51,13 +52,17 @@ type Config struct {
 	Cluster string `yaml:"cluster,omitempty"`
 }
 
+type TLSContext struct {
+	RequireClientCertificate bool `yaml:"require_client_certificate,omitempty"`
+}
+
 type EnvoyConfParser struct{}
 
 func NewEnvoyConfParser() EnvoyConfParser {
 	return EnvoyConfParser{}
 }
 
-/* Parses the Envoy conf file and extracts the clusters and a map of cluster names to listeners*/
+// Parses the Envoy conf file and extracts the clusters and a map of cluster names to listeners
 func (e EnvoyConfParser) GetClusters(envoyConfFile string) (clusters []Cluster, nameToPortMap map[string]string, err error) {
 	contents, err := ioutil.ReadFile(envoyConfFile)
 	if err != nil {
@@ -83,4 +88,30 @@ func (e EnvoyConfParser) GetClusters(envoyConfFile string) (clusters []Cluster, 
 	}
 
 	return clusters, nameToPortMap, nil
+}
+
+// Checks if MTLS is enabled in the Envoy conf file.
+// Defaults to returning false if require_client_certificate isn't set.
+func (e EnvoyConfParser) GetMTLS(envoyConfFile string) (bool, error) {
+	contents, err := ioutil.ReadFile(envoyConfFile)
+	if err != nil {
+		return false, fmt.Errorf("read envoy config: %s", err)
+	}
+
+	conf := EnvoyConf{}
+
+	err = yaml.Unmarshal(contents, &conf)
+	if err != nil {
+		return false, fmt.Errorf("unmarshal envoy config: %s", err)
+	}
+
+	for _, listener := range conf.StaticResources.Listeners {
+		for _, filterChain := range listener.FilterChains {
+			// Return the first value of require_client_certificate.
+			// If we ever expect these values to be different between listeners, we can deal with it then.
+			return filterChain.TLSContext.RequireClientCertificate, nil
+		}
+	}
+
+	return false, nil
 }
