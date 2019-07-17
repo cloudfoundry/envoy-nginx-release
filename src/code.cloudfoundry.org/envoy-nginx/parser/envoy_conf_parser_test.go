@@ -55,7 +55,7 @@ var _ = Describe("EnvoyConfigParser", func() {
 			Context("when envoy conf contents fail to unmarshal", func() {
 				It("should return unmarshal error", func() {
 					_, _, err := envoyConfParser.GetClusters(invalidYamlFile)
-					Expect(err).To(MatchError("Failed to unmarshal envoy conf: yaml: could not find expected directive name"))
+					Expect(err).To(MatchError("Failed to unmarshal envoy config: yaml: could not find expected directive name"))
 				})
 			})
 		})
@@ -80,7 +80,7 @@ var _ = Describe("EnvoyConfigParser", func() {
 		Context("when envoyConf doesn't exist", func() {
 			It("should return a read error", func() {
 				_, err := envoyConfParser.GetMTLS("not-a-real-file")
-				Expect(err).To(MatchError(ContainSubstring("read envoy config: open not-a-real-file:")))
+				Expect(err).To(MatchError(ContainSubstring("Failed to read envoy config: open not-a-real-file:")))
 			})
 		})
 
@@ -103,7 +103,7 @@ var _ = Describe("EnvoyConfigParser", func() {
 			Context("when envoy conf contents fail to unmarshal", func() {
 				It("should return unmarshal error", func() {
 					_, err := envoyConfParser.GetMTLS(invalidYamlFile)
-					Expect(err).To(MatchError("unmarshal envoy config: yaml: could not find expected directive name"))
+					Expect(err).To(MatchError("Failed to unmarshal envoy config: yaml: could not find expected directive name"))
 				})
 			})
 		})

@@ -62,18 +62,25 @@ func NewEnvoyConfParser() EnvoyConfParser {
 	return EnvoyConfParser{}
 }
 
-// Parses the Envoy conf file and extracts the clusters and a map of cluster names to listeners
-func (e EnvoyConfParser) GetClusters(envoyConfFile string) (clusters []Cluster, nameToPortMap map[string]string, err error) {
-	contents, err := ioutil.ReadFile(envoyConfFile)
-	if err != nil {
-		return []Cluster{}, map[string]string{}, fmt.Errorf("Failed to read envoy config: %s", err)
-	}
-
+// Read Envoy conf file and unmarshal it
+func (e EnvoyConfParser) readUnmarshalEnvoyConfig(envoyConfFile string) (EnvoyConf, string, error) {
 	conf := EnvoyConf{}
 
-	err = yaml.Unmarshal(contents, &conf)
+	contents, err := ioutil.ReadFile(envoyConfFile)
+
 	if err != nil {
-		return []Cluster{}, map[string]string{}, fmt.Errorf("Failed to unmarshal envoy conf: %s", err)
+		return conf, "read envoy config", err
+	}
+
+	err = yaml.Unmarshal(contents, &conf)
+	return conf, "unmarshal envoy config", err
+}
+
+// Parses the Envoy conf file and extracts the clusters and a map of cluster names to listeners
+func (e EnvoyConfParser) GetClusters(envoyConfFile string) (clusters []Cluster, nameToPortMap map[string]string, err error) {
+	conf, errorMessage, err := e.readUnmarshalEnvoyConfig(envoyConfFile)
+	if err != nil {
+		return []Cluster{}, map[string]string{}, fmt.Errorf("Failed to %s: %s", errorMessage, err)
 	}
 
 	for i := 0; i < len(conf.StaticResources.Clusters); i++ {
@@ -93,16 +100,9 @@ func (e EnvoyConfParser) GetClusters(envoyConfFile string) (clusters []Cluster, 
 // Checks if MTLS is enabled in the Envoy conf file.
 // Defaults to returning false if require_client_certificate isn't set.
 func (e EnvoyConfParser) GetMTLS(envoyConfFile string) (bool, error) {
-	contents, err := ioutil.ReadFile(envoyConfFile)
+	conf, errorMessage, err := e.readUnmarshalEnvoyConfig(envoyConfFile)
 	if err != nil {
-		return false, fmt.Errorf("read envoy config: %s", err)
-	}
-
-	conf := EnvoyConf{}
-
-	err = yaml.Unmarshal(contents, &conf)
-	if err != nil {
-		return false, fmt.Errorf("unmarshal envoy config: %s", err)
+		return false, fmt.Errorf("Failed to %s: %s", errorMessage, err)
 	}
 
 	for _, listener := range conf.StaticResources.Listeners {
