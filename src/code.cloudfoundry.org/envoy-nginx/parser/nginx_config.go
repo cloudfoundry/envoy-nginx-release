@@ -23,8 +23,9 @@ type BaseTemplate struct {
 }
 
 type envoyConfParser interface {
-	GetClusters(file string) ([]Cluster, map[string]string, error)
-	GetMTLS(file string) (bool, error)
+	ReadUnmarshalEnvoyConfig(envoyConfFile string) (EnvoyConf, error)
+	GetClusters(conf EnvoyConf) ([]Cluster, map[string]string)
+	GetMTLS(conf EnvoyConf) bool
 }
 
 type sdsCredParser interface {
@@ -78,10 +79,12 @@ func convertToUnixPath(path string) string {
 
 // Generates NGINX config file.
 func (n NginxConfig) Generate(envoyConfFile string) (string, error) {
-	clusters, nameToPortMap, err := n.envoyConfParser.GetClusters(envoyConfFile)
+	envoyConf, err := n.envoyConfParser.ReadUnmarshalEnvoyConfig(envoyConfFile)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("read and unmarshal Envoy config: %s", err)
 	}
+
+	clusters, nameToPortMap := n.envoyConfParser.GetClusters(envoyConf)
 
 	const baseTemplate = `
     upstream {{.Name}} {
@@ -109,10 +112,7 @@ func (n NginxConfig) Generate(envoyConfFile string) (string, error) {
 	unixKey := convertToUnixPath(n.keyFile)
 	unixCA := convertToUnixPath(n.trustedCAFile)
 
-	mtlsEnabled, err := n.envoyConfParser.GetMTLS(envoyConfFile)
-	if err != nil {
-		return "", fmt.Errorf("get mtls from envoy config: %s", err)
-	}
+	mtlsEnabled := n.envoyConfParser.GetMTLS(envoyConf)
 
 	//Execute the template for each socket address
 	for _, c := range clusters {
@@ -135,7 +135,7 @@ func (n NginxConfig) Generate(envoyConfFile string) (string, error) {
 
 		err = t.Execute(out, bts)
 		if err != nil {
-			return "", fmt.Errorf("Failed executing nginx config template: %s", err)
+			return "", fmt.Errorf("executing envoy-nginx config template: %s", err)
 		}
 	}
 
@@ -158,7 +158,7 @@ stream {
 
 	err = ioutil.WriteFile(n.confFile, []byte(confTemplate), FilePerm)
 	if err != nil {
-		return "", fmt.Errorf("Failed to write envoy_nginx.conf: %s", err)
+		return "", fmt.Errorf("write envoy_nginx.conf: %s", err)
 	}
 
 	return n.confFile, nil

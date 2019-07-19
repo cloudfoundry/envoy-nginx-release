@@ -18,10 +18,9 @@ import (
 
 var _ = Describe("Nginx Config", func() {
 	var (
-		envoyConfFile string
-		tmpdir        string
-		configFile    string
-		config        []byte
+		tmpdir     string
+		configFile string
+		config     []byte
 
 		envoyConfParser     *fakes.EnvoyConfParser
 		nginxConfig         parser.NginxConfig
@@ -30,8 +29,6 @@ var _ = Describe("Nginx Config", func() {
 	)
 
 	BeforeEach(func() {
-		envoyConfFile = "../fixtures/cf_assets_envoy_config/envoy.yaml"
-
 		sdsCredParser = &fakes.SdsCredParser{}
 		sdsValidationParser = &fakes.SdsServerValidationParser{}
 		envoyConfParser = &fakes.EnvoyConfParser{}
@@ -115,6 +112,7 @@ var _ = Describe("Nginx Config", func() {
 
 	Describe("Generate", func() {
 		BeforeEach(func() {
+			envoyConfParser.ReadUnmarshalEnvoyConfigCall.Returns.Error = nil
 			envoyConfParser.GetClustersCall.Returns.Clusters = testClusters()
 			envoyConfParser.GetClustersCall.Returns.NameToPortMap = map[string]string{
 				"0-service-cluster": "61001",
@@ -124,111 +122,97 @@ var _ = Describe("Nginx Config", func() {
 			envoyConfParser.GetMTLSCall.Returns.MTLS = true
 		})
 
-		Describe("Good configuration", func() {
-			Context("when envoyConf and sdsCreds files are configured correctly", func() {
-				BeforeEach(func() {
-					ioutil.WriteFile(filepath.Join(tmpdir, "cert.pem"), []byte(""), 0744)
-					ioutil.WriteFile(filepath.Join(tmpdir, "key.pem"), []byte(""), 0744)
-					ioutil.WriteFile(filepath.Join(tmpdir, "ca.pem"), []byte(""), 0744)
+		Context("when envoyConf and sdsCreds files are configured correctly", func() {
+			It("should generate a valid nginx.conf", func() {
+				var err error
+				configFile, err = nginxConfig.Generate(EnvoyConfigFixture)
+				Expect(err).ShouldNot(HaveOccurred())
 
-					var err error
-					configFile, err = nginxConfig.Generate(envoyConfFile)
-					Expect(err).ShouldNot(HaveOccurred())
+				config, err = ioutil.ReadFile(configFile)
+				Expect(err).ShouldNot(HaveOccurred())
 
-					config, err = ioutil.ReadFile(configFile)
-					Expect(err).ShouldNot(HaveOccurred())
+				By("having a valid pid directive", func() {
+					// e.g. pid /Temp/nginx_024.pid;
+					re := regexp.MustCompile(`[\r\n]pid\s*[\w/.]+;`)
+					match := re.Find(config)
+					Expect(match).NotTo(BeNil())
 				})
 
-				It("should generate a valid nginx.conf of non-zero size", func() {
-					f, err := os.Stat(configFile)
-					Expect(err).ShouldNot(HaveOccurred())
-					Expect(f.Size()).Should(BeNumerically(">", 0))
+				By("having an upstream server with addr 172.30.2.245:8080", func() {
+					re := regexp.MustCompile(`[\r\n]\s*server\s*172.30.2.245:8080;`)
+					match := re.Find(config)
+					Expect(match).NotTo(BeNil())
 				})
 
-				Describe("nginx.conf contents", func() {
-					It("should have a valid pid directive", func() {
-						// e.g. pid /Temp/nginx_024.pid;
-						re := regexp.MustCompile(`[\r\n]pid\s*[\w/.]+;`)
-						match := re.Find(config)
-						Expect(match).NotTo(BeNil())
-					})
+				By("having an upstream server with addr 172.30.2.245:2222", func() {
+					re := regexp.MustCompile(`[\r\n]\s*server\s*172.30.2.245:2222;`)
+					match := re.Find(config)
+					Expect(match).NotTo(BeNil())
+				})
 
-					It("should have an upstream server with addr 172.30.2.245:8080", func() {
-						re := regexp.MustCompile(`[\r\n]\s*server\s*172.30.2.245:8080;`)
-						match := re.Find(config)
-						Expect(match).NotTo(BeNil())
-					})
+				By("having an upstream server with addr 172.30.2.245:1234", func() {
+					re := regexp.MustCompile(`[\r\n]\s*server\s*172.30.2.245:1234;`)
+					match := re.Find(config)
+					Expect(match).NotTo(BeNil())
+				})
 
-					It("should have an upstream server with addr 172.30.2.245:2222", func() {
-						re := regexp.MustCompile(`[\r\n]\s*server\s*172.30.2.245:2222;`)
-						match := re.Find(config)
-						Expect(match).NotTo(BeNil())
-					})
+				By("having a valid server listening on 61001", func() {
+					re := regexp.MustCompile(`[\r\n]\s*listen\s*61001\s*ssl;`)
+					match := re.Find(config)
+					Expect(match).NotTo(BeNil())
 
-					It("should have an upstream server with addr 172.30.2.245:1234", func() {
-						re := regexp.MustCompile(`[\r\n]\s*server\s*172.30.2.245:1234;`)
-						match := re.Find(config)
-						Expect(match).NotTo(BeNil())
-					})
+					re = regexp.MustCompile(`[\r\n]\s*proxy_pass\s*0-service-cluster;`)
+					match = re.Find(config)
+					Expect(match).NotTo(BeNil())
+				})
 
-					It("should have a valid server listening on 61001", func() {
-						re := regexp.MustCompile(`[\r\n]\s*listen\s*61001\s*ssl;`)
-						match := re.Find(config)
-						Expect(match).NotTo(BeNil())
+				By("having a valid server listening on 61002", func() {
+					re := regexp.MustCompile(`[\r\n]\s*listen\s*61002\s*ssl;`)
+					match := re.Find(config)
+					Expect(match).NotTo(BeNil())
 
-						re = regexp.MustCompile(`[\r\n]\s*proxy_pass\s*0-service-cluster;`)
-						match = re.Find(config)
-						Expect(match).NotTo(BeNil())
-					})
+					re = regexp.MustCompile(`[\r\n]\s*proxy_pass\s*1-service-cluster;`)
+					match = re.Find(config)
+					Expect(match).NotTo(BeNil())
+				})
 
-					It("should have a valid server listening on 61002", func() {
-						re := regexp.MustCompile(`[\r\n]\s*listen\s*61002\s*ssl;`)
-						match := re.Find(config)
-						Expect(match).NotTo(BeNil())
+				By("having a valid server listening on 61003", func() {
+					re := regexp.MustCompile(`[\r\n]\s*listen\s*61003\s*ssl;`)
+					match := re.Find(config)
+					Expect(match).NotTo(BeNil())
 
-						re = regexp.MustCompile(`[\r\n]\s*proxy_pass\s*1-service-cluster;`)
-						match = re.Find(config)
-						Expect(match).NotTo(BeNil())
-					})
+					re = regexp.MustCompile(`[\r\n]\s*proxy_pass\s*2-service-cluster;`)
+					match = re.Find(config)
+					Expect(match).NotTo(BeNil())
+				})
 
-					It("should have a valid server listening on 61003", func() {
-						re := regexp.MustCompile(`[\r\n]\s*listen\s*61003\s*ssl;`)
-						match := re.Find(config)
-						Expect(match).NotTo(BeNil())
+				By("specifying the ssl certificate", func() {
+					// TODO: test this separately for each server that is listening
+					certPath := filepath.Join(tmpdir, "cert.pem")
+					matcher := fmt.Sprintf(`[\r\n]\s*ssl_certificate\s*%s;`, convertToUnixPath(certPath))
+					re := regexp.MustCompile(matcher)
+					sslCertLine := re.Find(config)
+					Expect(sslCertLine).NotTo(BeNil())
+				})
 
-						re = regexp.MustCompile(`[\r\n]\s*proxy_pass\s*2-service-cluster;`)
-						match = re.Find(config)
-						Expect(match).NotTo(BeNil())
-					})
+				By("specifying the ssl private key", func() {
+					keyPath := filepath.Join(tmpdir, "key.pem")
+					matcher := fmt.Sprintf(`[\r\n]\s*ssl_certificate_key\s*%s;`, convertToUnixPath(keyPath))
+					re := regexp.MustCompile(matcher)
+					sslCertKeyLine := re.Find(config)
+					Expect(sslCertKeyLine).NotTo(BeNil())
+				})
 
-					It("should specify the ssl certificate", func() {
-						// TODO: test this separately for each server that is listening
-						certPath := filepath.Join(tmpdir, "cert.pem")
-						matcher := fmt.Sprintf(`[\r\n]\s*ssl_certificate\s*%s;`, convertToUnixPath(certPath))
-						re := regexp.MustCompile(matcher)
-						sslCertLine := re.Find(config)
-						Expect(sslCertLine).NotTo(BeNil())
-					})
+				By("verifying the ssl client certificate", func() {
+					Expect(string(config)).To(ContainSubstring("ssl_verify_client on"))
+				})
 
-					It("should specify the ssl private key", func() {
-						keyPath := filepath.Join(tmpdir, "key.pem")
-						matcher := fmt.Sprintf(`[\r\n]\s*ssl_certificate_key\s*%s;`, convertToUnixPath(keyPath))
-						re := regexp.MustCompile(matcher)
-						sslCertKeyLine := re.Find(config)
-						Expect(sslCertKeyLine).NotTo(BeNil())
-					})
-
-					It("should verify the ssl client certificate", func() {
-						Expect(string(config)).To(ContainSubstring("ssl_verify_client on"))
-					})
-
-					It("should include the ssl_client_certificate directive", func() {
-						caPath := filepath.Join(tmpdir, "ca.pem")
-						matcher := fmt.Sprintf(`[\r\n]\s*ssl_client_certificate\s*%s;`, convertToUnixPath(caPath))
-						re := regexp.MustCompile(matcher)
-						sslCACertLine := re.Find(config)
-						Expect(sslCACertLine).NotTo(BeNil())
-					})
+				By("including the ssl_client_certificate directive", func() {
+					caPath := filepath.Join(tmpdir, "ca.pem")
+					matcher := fmt.Sprintf(`[\r\n]\s*ssl_client_certificate\s*%s;`, convertToUnixPath(caPath))
+					re := regexp.MustCompile(matcher)
+					sslCACertLine := re.Find(config)
+					Expect(sslCACertLine).NotTo(BeNil())
 				})
 			})
 		})
@@ -236,7 +220,7 @@ var _ = Describe("Nginx Config", func() {
 		Context("when trusted ca certificates are not provided", func() {
 			BeforeEach(func() {
 				envoyConfParser.GetMTLSCall.Returns.MTLS = false
-				configFile, err := nginxConfig.Generate(envoyConfFile)
+				configFile, err := nginxConfig.Generate(EnvoyConfigFixture)
 				Expect(err).ShouldNot(HaveOccurred())
 
 				config, err = ioutil.ReadFile(configFile)
@@ -257,31 +241,25 @@ var _ = Describe("Nginx Config", func() {
 			})
 		})
 
-		Describe("Bad configuration", func() {
+		Context("when ReadUnmarshalEnvoyConfig fails", func() {
 			BeforeEach(func() {
-				nginxConfig = parser.NewNginxConfig(envoyConfParser, sdsCredParser, sdsValidationParser, tmpdir)
+				envoyConfParser.ReadUnmarshalEnvoyConfigCall.Returns.Error = errors.New("banana")
+			})
+			It("should return a custom error", func() {
+				_, err := nginxConfig.Generate(EnvoyConfigFixture)
+				Expect(err).To(MatchError("read and unmarshal Envoy config: banana"))
+			})
+		})
+
+		Context("when a listener port is missing for a cluster name", func() {
+			BeforeEach(func() {
+				envoyConfParser.GetClustersCall.Returns.Clusters = []parser.Cluster{{Name: "banana"}}
+				envoyConfParser.GetClustersCall.Returns.NameToPortMap = map[string]string{}
 			})
 
-			Context("when a listener port is missing for a cluster name", func() {
-				BeforeEach(func() {
-					envoyConfParser.GetClustersCall.Returns.Clusters = []parser.Cluster{{Name: "banana"}}
-					envoyConfParser.GetClustersCall.Returns.NameToPortMap = map[string]string{}
-				})
-
-				It("should return a custom error", func() {
-					_, err := nginxConfig.Generate(envoyConfFile)
-					Expect(err).To(MatchError("port is missing for cluster name banana"))
-				})
-			})
-			Context("when parsing for mtls fails", func() {
-				BeforeEach(func() {
-					envoyConfParser.GetMTLSCall.Returns.Error = errors.New("banana")
-				})
-
-				It("should return a custom error", func() {
-					_, err := nginxConfig.Generate(envoyConfFile)
-					Expect(err).To(MatchError("get mtls from envoy config: banana"))
-				})
+			It("should return a custom error", func() {
+				_, err := nginxConfig.Generate(EnvoyConfigFixture)
+				Expect(err).To(MatchError("port is missing for cluster name banana"))
 			})
 		})
 
@@ -293,8 +271,8 @@ var _ = Describe("Nginx Config", func() {
 			// our trick to cause that function to fail only works once!
 			// The trick is to pass a directory that isn't real.
 			It("returns a helpful error message", func() {
-				_, err := nginxConfig.Generate(envoyConfFile)
-				Expect(err.Error()).To(ContainSubstring("Failed to write envoy_nginx.conf:"))
+				_, err := nginxConfig.Generate(EnvoyConfigFixture)
+				Expect(err.Error()).To(ContainSubstring("write envoy_nginx.conf:"))
 			})
 		})
 	})

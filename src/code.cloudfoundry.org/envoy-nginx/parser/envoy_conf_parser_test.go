@@ -11,27 +11,25 @@ import (
 
 var _ = Describe("EnvoyConfigParser", func() {
 	var (
-		envoyConfFile   string
 		envoyConfParser parser.EnvoyConfParser
 	)
 
 	BeforeEach(func() {
-		envoyConfFile = "../fixtures/cf_assets_envoy_config/envoy.yaml"
 		envoyConfParser = parser.NewEnvoyConfParser()
 	})
 
-	Describe("GetClusters", func() {
-		It("returns a set of clusters", func() {
-			clusters, nameToPortMap, err := envoyConfParser.GetClusters(envoyConfFile)
+	Describe("ReadUnmarshalEnvoyConfig", func() {
+		It("returns an Envoy config file", func() {
+			conf, err := envoyConfParser.ReadUnmarshalEnvoyConfig(EnvoyConfigFixture)
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(clusters).To(HaveLen(3))
-			Expect(nameToPortMap).To(HaveLen(3))
+			Expect(conf.StaticResources.Clusters).To(HaveLen(3))
+			Expect(conf.StaticResources.Listeners).To(HaveLen(3))
 		})
 
 		Context("when envoyConf doesn't exist", func() {
 			It("should return a read error", func() {
-				_, _, err := envoyConfParser.GetClusters("not-a-real-file")
+				_, err := envoyConfParser.ReadUnmarshalEnvoyConfig("not-a-real-file")
 				Expect(err.Error()).To(ContainSubstring("Failed to read envoy config: open not-a-real-file:"))
 			})
 		})
@@ -54,58 +52,63 @@ var _ = Describe("EnvoyConfigParser", func() {
 
 			Context("when envoy conf contents fail to unmarshal", func() {
 				It("should return unmarshal error", func() {
-					_, _, err := envoyConfParser.GetClusters(invalidYamlFile)
+					_, err := envoyConfParser.ReadUnmarshalEnvoyConfig(invalidYamlFile)
 					Expect(err).To(MatchError("Failed to unmarshal envoy config: yaml: could not find expected directive name"))
 				})
 			})
 		})
 	})
 
+	Describe("GetClusters", func() {
+		Context("when the envoy conf file is successfully unmarshaled", func() {
+			It("returns a set of clusters", func() {
+				conf, err := envoyConfParser.ReadUnmarshalEnvoyConfig(EnvoyConfigFixture)
+				Expect(err).NotTo(HaveOccurred())
+				clusters, nameToPortMap := envoyConfParser.GetClusters(conf)
+
+				Expect(clusters).To(HaveLen(3))
+				Expect(nameToPortMap).To(HaveLen(3))
+			})
+		})
+		Context("when envoyConf has no data", func() {
+			It("returns empty clusters and nameToPortMap", func() {
+				emptyConf, err := envoyConfParser.ReadUnmarshalEnvoyConfig("not-a-real-file")
+				Expect(err.Error()).To(ContainSubstring("Failed to read envoy config: open not-a-real-file:"))
+				clusters, nameToPortMap := envoyConfParser.GetClusters(emptyConf)
+				Expect(clusters).To(HaveLen(0))
+				Expect(nameToPortMap).To(HaveLen(0))
+			})
+		})
+	})
+
 	Describe("GetMTLS", func() {
-		It("returns whether MTLS is enabled", func() {
-			mtls, err := envoyConfParser.GetMTLS(envoyConfFile)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(mtls).To(BeTrue())
+		Context("when the envoy conf file is successfully unmarshaled", func() {
+			It("returns whether MTLS is enabled", func() {
+				conf, err := envoyConfParser.ReadUnmarshalEnvoyConfig(EnvoyConfigFixture)
+				Expect(err).NotTo(HaveOccurred())
+				mtls := envoyConfParser.GetMTLS(conf)
+				Expect(mtls).To(BeTrue())
+			})
 		})
 
 		Context("when require_client_certificate is false", func() {
 			It("should return false", func() {
 				envoyConfNoMTLS := "../fixtures/cf_assets_envoy_config/envoy-without-mtls.yaml"
-				mtls, err := envoyConfParser.GetMTLS(envoyConfNoMTLS)
+				conf, err := envoyConfParser.ReadUnmarshalEnvoyConfig(envoyConfNoMTLS)
 				Expect(err).NotTo(HaveOccurred())
+				mtls := envoyConfParser.GetMTLS(conf)
 				Expect(mtls).To(BeFalse())
 			})
 		})
 
-		Context("when envoyConf doesn't exist", func() {
-			It("should return a read error", func() {
-				_, err := envoyConfParser.GetMTLS("not-a-real-file")
-				Expect(err).To(MatchError(ContainSubstring("Failed to read envoy config: open not-a-real-file:")))
+		Context("when envoyConf has no data", func() {
+			It("returns empty clusters and nameToPortMap", func() {
+				emptyConf, err := envoyConfParser.ReadUnmarshalEnvoyConfig("not-a-real-file")
+				Expect(err.Error()).To(ContainSubstring("Failed to read envoy config: open not-a-real-file:"))
+				mtls := envoyConfParser.GetMTLS(emptyConf)
+				Expect(mtls).To(BeFalse())
 			})
 		})
 
-		Context("when envoy conf contains invalid yaml", func() {
-			var invalidYamlFile string
-			BeforeEach(func() {
-				tmpFile, err := ioutil.TempFile(os.TempDir(), "envoy-invalid.yaml")
-				Expect(err).NotTo(HaveOccurred())
-
-				invalidYamlFile = tmpFile.Name()
-
-				_, err = tmpFile.Write([]byte("%%%"))
-				Expect(err).NotTo(HaveOccurred())
-			})
-
-			AfterEach(func() {
-				os.Remove(invalidYamlFile)
-			})
-
-			Context("when envoy conf contents fail to unmarshal", func() {
-				It("should return unmarshal error", func() {
-					_, err := envoyConfParser.GetMTLS(invalidYamlFile)
-					Expect(err).To(MatchError("Failed to unmarshal envoy config: yaml: could not find expected directive name"))
-				})
-			})
-		})
 	})
 })

@@ -63,26 +63,24 @@ func NewEnvoyConfParser() EnvoyConfParser {
 }
 
 // Read Envoy conf file and unmarshal it
-func (e EnvoyConfParser) readUnmarshalEnvoyConfig(envoyConfFile string) (EnvoyConf, string, error) {
+func (e EnvoyConfParser) ReadUnmarshalEnvoyConfig(envoyConfFile string) (EnvoyConf, error) {
 	conf := EnvoyConf{}
 
 	contents, err := ioutil.ReadFile(envoyConfFile)
-
 	if err != nil {
-		return conf, "read envoy config", err
+		return conf, fmt.Errorf("Failed to read envoy config: %s", err)
 	}
 
 	err = yaml.Unmarshal(contents, &conf)
-	return conf, "unmarshal envoy config", err
+	if err != nil {
+		return conf, fmt.Errorf("Failed to unmarshal envoy config: %s", err)
+	}
+
+	return conf, nil
 }
 
 // Parses the Envoy conf file and extracts the clusters and a map of cluster names to listeners
-func (e EnvoyConfParser) GetClusters(envoyConfFile string) (clusters []Cluster, nameToPortMap map[string]string, err error) {
-	conf, errorMessage, err := e.readUnmarshalEnvoyConfig(envoyConfFile)
-	if err != nil {
-		return []Cluster{}, map[string]string{}, fmt.Errorf("Failed to %s: %s", errorMessage, err)
-	}
-
+func (e EnvoyConfParser) GetClusters(conf EnvoyConf) (clusters []Cluster, nameToPortMap map[string]string) {
 	for i := 0; i < len(conf.StaticResources.Clusters); i++ {
 		clusters = append(clusters, conf.StaticResources.Clusters[i])
 	}
@@ -94,24 +92,19 @@ func (e EnvoyConfParser) GetClusters(envoyConfFile string) (clusters []Cluster, 
 		nameToPortMap[clusterName] = listenerPort
 	}
 
-	return clusters, nameToPortMap, nil
+	return clusters, nameToPortMap
 }
 
 // Checks if MTLS is enabled in the Envoy conf file.
 // Defaults to returning false if require_client_certificate isn't set.
-func (e EnvoyConfParser) GetMTLS(envoyConfFile string) (bool, error) {
-	conf, errorMessage, err := e.readUnmarshalEnvoyConfig(envoyConfFile)
-	if err != nil {
-		return false, fmt.Errorf("Failed to %s: %s", errorMessage, err)
-	}
-
+func (e EnvoyConfParser) GetMTLS(conf EnvoyConf) bool {
 	for _, listener := range conf.StaticResources.Listeners {
 		for _, filterChain := range listener.FilterChains {
 			// Return the first value of require_client_certificate.
 			// If we ever expect these values to be different between listeners, we can deal with it then.
-			return filterChain.TLSContext.RequireClientCertificate, nil
+			return filterChain.TLSContext.RequireClientCertificate
 		}
 	}
 
-	return false, nil
+	return false
 }
