@@ -146,6 +146,9 @@ func (a App) startNginx(nginxPath string, nginxConfParser parser.NginxConfig, en
 		return fmt.Errorf("write tls files: %s", err)
 	}
 
+	// TODO: from conventions reasons (like the reloadNginx function):
+	// consider returning only an error from Generate
+	// if err==nil, call to nginxConfParser.GetConfFile
 	confFile, err := nginxConfParser.Generate(envoyConf)
 	if err != nil {
 		return fmt.Errorf("generate nginx config from envoy config: %s", err)

@@ -20,6 +20,7 @@ type BaseTemplate struct {
 	Cert            string
 	TrustedCA       string
 	MTLS            bool
+	Ciphers         string
 }
 
 type envoyConfParser interface {
@@ -100,6 +101,9 @@ func (n NginxConfig) Generate(envoyConfFile string) (string, error) {
         ssl_verify_client on;
         {{ end }}
         proxy_pass {{.Name}};
+
+				ssl_prefer_server_ciphers on;
+				ssl_ciphers {{.Ciphers}};
     }
 	`
 	//create buffer to store template output
@@ -113,6 +117,8 @@ func (n NginxConfig) Generate(envoyConfFile string) (string, error) {
 	unixCA := convertToUnixPath(n.trustedCAFile)
 
 	mtlsEnabled := n.envoyConfParser.GetMTLS(envoyConf)
+
+	supportedCipherSuites := "ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-GCM-SHA256"
 
 	//Execute the template for each socket address
 	for _, c := range clusters {
@@ -131,6 +137,7 @@ func (n NginxConfig) Generate(envoyConfFile string) (string, error) {
 			MTLS:            mtlsEnabled,
 
 			ListenerPort: listenerPort,
+			Ciphers:      supportedCipherSuites,
 		}
 
 		err = t.Execute(out, bts)
