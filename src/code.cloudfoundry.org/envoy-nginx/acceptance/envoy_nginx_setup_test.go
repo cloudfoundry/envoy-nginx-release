@@ -77,7 +77,7 @@ var _ = Describe("Acceptance", func() {
 			// The output of the "fake" nginx.exe will always have a comma
 			Eventually(session.Out).Should(gbytes.Say(","))
 			args = strings.Split(string(session.Out.Contents()), ",")
-			Expect(len(args)).To(Equal(5))
+			Expect(len(args)).To(Equal(3))
 
 			confDir = findNginxConfDir(args)
 			Expect(confDir).ToNot(BeEmpty())
@@ -97,8 +97,7 @@ var _ = Describe("Acceptance", func() {
 				err := RotateCert("../fixtures/cf_assets_envoy_config/sds-server-cert-and-key-rotated.yaml", sdsCredsFile)
 				Expect(err).ToNot(HaveOccurred())
 
-				nginxConf := strings.Replace(filepath.Join(confDir, "envoy_nginx.conf"), `\`, `\\`, -1)
-				Eventually(session.Out).Should(gbytes.Say(fmt.Sprintf("-c,%s,-p,%s,-s,reload", nginxConf, strings.Replace(confDir, `\`, `\\`, -1))))
+				Eventually(session.Out).Should(gbytes.Say(fmt.Sprintf("-p,%s,-s,reload", strings.Replace(confDir, `\`, `\\`, -1))))
 
 				expectedCert := `-----BEGIN CERTIFICATE-----
 <<NEW EXPECTED CERT 1>>

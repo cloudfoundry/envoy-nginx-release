@@ -77,10 +77,9 @@ var _ = Describe("App", func() {
 
 			Expect(cmd.RunCall.Receives[0].Binary).To(Equal(nginxPath))
 			Expect(cmd.RunCall.Receives[0].Args).To(ConsistOf(
-				"-c", ContainSubstring("envoy_nginx.conf"),
 				"-p", ContainSubstring("nginx-conf"),
 			))
-			nginxConfDir = cmd.RunCall.Receives[0].Args[3]
+			nginxConfDir = cmd.RunCall.Receives[0].Args[1]
 
 			files, err := ioutil.ReadDir(nginxConfDir)
 			Expect(err).ToNot(HaveOccurred())
@@ -89,7 +88,7 @@ var _ = Describe("App", func() {
 			for _, file := range files {
 				names = append(names, file.Name())
 			}
-			Expect(names).To(ConsistOf("logs", "envoy_nginx.conf", "cert.pem", "key.pem", "ca.pem"))
+			Expect(names).To(ConsistOf("logs", "conf", "cert.pem", "key.pem", "ca.pem"))
 		})
 
 		Context("when running the command fails", func() {
@@ -102,8 +101,6 @@ var _ = Describe("App", func() {
 				Expect(err).To(MatchError("cmd run: banana"))
 
 				Expect(logger.PrintlnCall.Messages).To(ContainElement(ContainSubstring("start nginx: ")))
-
-				nginxConfDir = cmd.RunCall.Receives[0].Args[3]
 			})
 		})
 

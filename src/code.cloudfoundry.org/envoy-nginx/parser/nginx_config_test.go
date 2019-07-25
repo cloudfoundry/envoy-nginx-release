@@ -18,9 +18,8 @@ import (
 
 var _ = Describe("Nginx Config", func() {
 	var (
-		tmpdir     string
-		configFile string
-		config     []byte
+		tmpdir string
+		config []byte
 
 		envoyConfParser     *fakes.EnvoyConfParser
 		nginxConfig         parser.NginxConfig
@@ -35,6 +34,8 @@ var _ = Describe("Nginx Config", func() {
 
 		var err error
 		tmpdir, err = ioutil.TempDir("", "conf")
+		Expect(err).ShouldNot(HaveOccurred())
+		err = os.Mkdir(filepath.Join(tmpdir, "conf"), os.ModePerm)
 		Expect(err).ShouldNot(HaveOccurred())
 
 		nginxConfig = parser.NewNginxConfig(envoyConfParser, sdsCredParser, sdsValidationParser, tmpdir)
@@ -125,10 +126,10 @@ var _ = Describe("Nginx Config", func() {
 		Context("when envoyConf and sdsCreds files are configured correctly", func() {
 			It("should generate a valid nginx.conf", func() {
 				var err error
-				configFile, err = nginxConfig.Generate(EnvoyConfigFixture)
+				err = nginxConfig.Generate(EnvoyConfigFixture)
 				Expect(err).ShouldNot(HaveOccurred())
 
-				config, err = ioutil.ReadFile(configFile)
+				config, err = ioutil.ReadFile(nginxConfig.GetConfFile())
 				Expect(err).ShouldNot(HaveOccurred())
 
 				By("having a valid pid directive", func() {
@@ -228,10 +229,10 @@ var _ = Describe("Nginx Config", func() {
 		Context("when trusted ca certificates are not provided", func() {
 			BeforeEach(func() {
 				envoyConfParser.GetMTLSCall.Returns.MTLS = false
-				configFile, err := nginxConfig.Generate(EnvoyConfigFixture)
+				err := nginxConfig.Generate(EnvoyConfigFixture)
 				Expect(err).ShouldNot(HaveOccurred())
 
-				config, err = ioutil.ReadFile(configFile)
+				config, err = ioutil.ReadFile(nginxConfig.GetConfFile())
 				Expect(err).ShouldNot(HaveOccurred())
 			})
 
@@ -254,7 +255,7 @@ var _ = Describe("Nginx Config", func() {
 				envoyConfParser.ReadUnmarshalEnvoyConfigCall.Returns.Error = errors.New("banana")
 			})
 			It("should return a custom error", func() {
-				_, err := nginxConfig.Generate(EnvoyConfigFixture)
+				err := nginxConfig.Generate(EnvoyConfigFixture)
 				Expect(err).To(MatchError("read and unmarshal Envoy config: banana"))
 			})
 		})
@@ -266,12 +267,12 @@ var _ = Describe("Nginx Config", func() {
 			})
 
 			It("should return a custom error", func() {
-				_, err := nginxConfig.Generate(EnvoyConfigFixture)
+				err := nginxConfig.Generate(EnvoyConfigFixture)
 				Expect(err).To(MatchError("port is missing for cluster name banana"))
 			})
 		})
 
-		Context("when ioutil fails to write the envoy_nginx.conf", func() {
+		Context("when ioutil fails to write the nginx.conf", func() {
 			BeforeEach(func() {
 				nginxConfig = parser.NewNginxConfig(envoyConfParser, sdsCredParser, sdsValidationParser, "not-a-real-dir")
 			})
@@ -279,8 +280,8 @@ var _ = Describe("Nginx Config", func() {
 			// our trick to cause that function to fail only works once!
 			// The trick is to pass a directory that isn't real.
 			It("returns a helpful error message", func() {
-				_, err := nginxConfig.Generate(EnvoyConfigFixture)
-				Expect(err.Error()).To(ContainSubstring("write envoy_nginx.conf:"))
+				err := nginxConfig.Generate(EnvoyConfigFixture)
+				Expect(err.Error()).To(ContainSubstring("nginx.conf: no such file or directory"))
 			})
 		})
 	})

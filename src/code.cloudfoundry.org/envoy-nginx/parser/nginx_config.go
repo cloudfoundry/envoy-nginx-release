@@ -55,7 +55,7 @@ func NewNginxConfig(envoyConfParser envoyConfParser, sdsCredParser sdsCredParser
 		sdsCredParser:       sdsCredParser,
 		sdsValidationParser: sdsValidationParser,
 		confDir:             confDir,
-		confFile:            filepath.Join(confDir, "envoy_nginx.conf"),
+		confFile:            filepath.Join(confDir, "conf", "nginx.conf"),
 		certFile:            filepath.Join(confDir, "cert.pem"),
 		keyFile:             filepath.Join(confDir, "key.pem"),
 		trustedCAFile:       filepath.Join(confDir, "ca.pem"),
@@ -79,10 +79,10 @@ func convertToUnixPath(path string) string {
 }
 
 // Generates NGINX config file.
-func (n NginxConfig) Generate(envoyConfFile string) (string, error) {
+func (n NginxConfig) Generate(envoyConfFile string) error {
 	envoyConf, err := n.envoyConfParser.ReadUnmarshalEnvoyConfig(envoyConfFile)
 	if err != nil {
-		return "", fmt.Errorf("read and unmarshal Envoy config: %s", err)
+		return fmt.Errorf("read and unmarshal Envoy config: %s", err)
 	}
 
 	clusters, nameToPortMap := n.envoyConfParser.GetClusters(envoyConf)
@@ -124,7 +124,7 @@ func (n NginxConfig) Generate(envoyConfFile string) (string, error) {
 	for _, c := range clusters {
 		listenerPort, exists := nameToPortMap[c.Name]
 		if !exists {
-			return "", fmt.Errorf("port is missing for cluster name %s", c.Name)
+			return fmt.Errorf("port is missing for cluster name %s", c.Name)
 		}
 
 		bts := BaseTemplate{
@@ -142,7 +142,7 @@ func (n NginxConfig) Generate(envoyConfFile string) (string, error) {
 
 		err = t.Execute(out, bts)
 		if err != nil {
-			return "", fmt.Errorf("executing envoy-nginx config template: %s", err)
+			return fmt.Errorf("executing envoy-nginx config template: %s", err)
 		}
 	}
 
@@ -165,10 +165,10 @@ stream {
 
 	err = ioutil.WriteFile(n.confFile, []byte(confTemplate), FilePerm)
 	if err != nil {
-		return "", fmt.Errorf("write envoy_nginx.conf: %s", err)
+		return fmt.Errorf("write %s: %s", n.confFile, err)
 	}
 
-	return n.confFile, nil
+	return nil
 }
 
 func (n NginxConfig) WriteTLSFiles() error {

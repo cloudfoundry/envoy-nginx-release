@@ -77,6 +77,11 @@ func (a App) Load(nginxPath, sdsCreds, sdsValidation string) error {
 		return fmt.Errorf("create nginx-conf/logs dir for error.log: %s", err)
 	}
 
+	err = os.Mkdir(filepath.Join(confDir, "conf"), os.ModePerm)
+	if err != nil {
+		return fmt.Errorf("create nginx-conf/conf dir for nginx.conf: %s", err)
+	}
+
 	envoyConfParser := parser.NewEnvoyConfParser()
 	sdsCredParser := parser.NewSdsCredParser(sdsCreds)
 	sdsValidationParser := parser.NewSdsServerValidationParser(sdsValidation)
@@ -127,11 +132,10 @@ func reloadNginx(nginxPath string, nginxConfParser parser.NginxConfig) error {
 	}
 
 	confDir := nginxConfParser.GetConfDir()
-	confFile := nginxConfParser.GetConfFile()
 
-	log.Println("envoy-nginx application: reload nginx:", nginxPath, "-c", confFile, "-p", confDir, "-s", "reload")
+	log.Println("envoy-nginx application: reload nginx:", nginxPath, "-p", confDir, "-s", "reload")
 
-	c := exec.Command(nginxPath, "-c", confFile, "-p", confDir, "-s", "reload")
+	c := exec.Command(nginxPath, "-p", confDir, "-s", "reload")
 	c.Stdout = os.Stdout
 	c.Stderr = os.Stderr
 	return c.Run()
@@ -146,10 +150,7 @@ func (a App) startNginx(nginxPath string, nginxConfParser parser.NginxConfig, en
 		return fmt.Errorf("write tls files: %s", err)
 	}
 
-	// TODO: from conventions reasons (like the reloadNginx function):
-	// consider returning only an error from Generate
-	// if err==nil, call to nginxConfParser.GetConfFile
-	confFile, err := nginxConfParser.Generate(envoyConf)
+	err = nginxConfParser.Generate(envoyConf)
 	if err != nil {
 		return fmt.Errorf("generate nginx config from envoy config: %s", err)
 	}
@@ -162,9 +163,9 @@ func (a App) startNginx(nginxPath string, nginxConfParser parser.NginxConfig, en
 		return fmt.Errorf("tail error log: %s", err)
 	}
 
-	a.logger.Println(fmt.Sprintf("envoy-nginx application: start nginx: %s -c %s -p %s", nginxPath, confFile, confDir))
+	a.logger.Println(fmt.Sprintf("envoy-nginx application: start nginx: %s -p %s", nginxPath, confDir))
 
-	err = a.cmd.Run(nginxPath, "-c", confFile, "-p", confDir)
+	err = a.cmd.Run(nginxPath, "-p", confDir)
 	if err != nil {
 		return fmt.Errorf("cmd run: %s", err)
 	}
