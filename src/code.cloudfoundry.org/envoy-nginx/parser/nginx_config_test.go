@@ -214,6 +214,14 @@ var _ = Describe("Nginx Config", func() {
 					sslCACertLine := re.Find(config)
 					Expect(sslCACertLine).NotTo(BeNil())
 				})
+
+				By("having a ssl_prefer_server_ciphers directive", func() {
+					Expect(string(config)).To(ContainSubstring("ssl_prefer_server_ciphers on"))
+				})
+
+				By("having a ssl_ciphers directive", func() {
+					Expect(string(config)).To(ContainSubstring("ssl_ciphers ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-GCM-SHA256"))
+				})
 			})
 		})
 
