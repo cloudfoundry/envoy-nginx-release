@@ -58,9 +58,9 @@ var _ = Describe("Acceptance", func() {
 
 	Context("when nginx.exe is present in the same directory", func() {
 		var (
-			args    []string
-			confDir string
-			session *gexec.Session
+			args     []string
+			nginxDir string
+			session  *gexec.Session
 		)
 
 		BeforeEach(func() {
@@ -79,15 +79,15 @@ var _ = Describe("Acceptance", func() {
 			args = strings.Split(string(session.Out.Contents()), ",")
 			Expect(len(args)).To(Equal(3))
 
-			confDir = findNginxConfDir(args)
-			Expect(confDir).ToNot(BeEmpty())
+			nginxDir = findNginxConfDir(args)
+			Expect(nginxDir).ToNot(BeEmpty())
 		})
 
 		AfterEach(func() {
 			session.Terminate()
 			Eventually(session, "5s").Should(gexec.Exit())
 
-			Expect(os.RemoveAll(confDir)).NotTo(HaveOccurred())
+			Expect(os.RemoveAll(nginxDir)).NotTo(HaveOccurred())
 
 			gexec.CleanupBuildArtifacts()
 		})
@@ -97,7 +97,7 @@ var _ = Describe("Acceptance", func() {
 				err := RotateCert("../fixtures/cf_assets_envoy_config/sds-server-cert-and-key-rotated.yaml", sdsCredsFile)
 				Expect(err).ToNot(HaveOccurred())
 
-				Eventually(session.Out).Should(gbytes.Say(fmt.Sprintf("-p,%s,-s,reload", strings.Replace(confDir, `\`, `\\`, -1))))
+				Eventually(session.Out).Should(gbytes.Say(fmt.Sprintf("-p,%s,-s,reload", strings.Replace(nginxDir, `\`, `\\`, -1))))
 
 				expectedCert := `-----BEGIN CERTIFICATE-----
 <<NEW EXPECTED CERT 1>>
@@ -110,8 +110,8 @@ var _ = Describe("Acceptance", func() {
 <<NEW EXPECTED KEY>>
 -----END RSA PRIVATE KEY-----
 `
-				certFile := filepath.Join(confDir, "cert.pem")
-				keyFile := filepath.Join(confDir, "key.pem")
+				certFile := filepath.Join(nginxDir, "cert.pem")
+				keyFile := filepath.Join(nginxDir, "key.pem")
 
 				currentCert, err := ioutil.ReadFile(string(certFile))
 				Expect(err).ShouldNot(HaveOccurred())
@@ -127,11 +127,11 @@ var _ = Describe("Acceptance", func() {
 })
 
 func findNginxConfDir(args []string) string {
-	confDir := ""
+	nginxDir := ""
 	for i, arg := range args {
 		if arg == "-p" && len(args) > i+1 {
-			confDir = strings.TrimSpace(args[i+1])
+			nginxDir = strings.TrimSpace(args[i+1])
 		}
 	}
-	return confDir
+	return nginxDir
 }

@@ -33,7 +33,7 @@ var _ = Describe("Nginx Config", func() {
 		envoyConfParser = &fakes.EnvoyConfParser{}
 
 		var err error
-		tmpdir, err = ioutil.TempDir("", "conf")
+		tmpdir, err = ioutil.TempDir("", "nginx")
 		Expect(err).ShouldNot(HaveOccurred())
 		err = os.Mkdir(filepath.Join(tmpdir, "conf"), os.ModePerm)
 		Expect(err).ShouldNot(HaveOccurred())

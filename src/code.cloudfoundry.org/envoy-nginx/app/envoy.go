@@ -67,26 +67,26 @@ func (a App) GetNginxPath() (path string, err error) {
 func (a App) Load(nginxPath, sdsCreds, sdsValidation string) error {
 	log.SetOutput(os.Stdout)
 
-	confDir, err := ioutil.TempDir("", "nginx-conf")
+	nginxDir, err := ioutil.TempDir("", "nginx")
 	if err != nil {
-		return fmt.Errorf("create nginx-conf dir: %s", err)
+		return fmt.Errorf("create nginx dir: %s", err)
 	}
 
-	err = os.Mkdir(filepath.Join(confDir, "logs"), os.ModePerm)
+	err = os.Mkdir(filepath.Join(nginxDir, "logs"), os.ModePerm)
 	if err != nil {
-		return fmt.Errorf("create nginx-conf/logs dir for error.log: %s", err)
+		return fmt.Errorf("create nginx/logs dir for error.log: %s", err)
 	}
 
-	err = os.Mkdir(filepath.Join(confDir, "conf"), os.ModePerm)
+	err = os.Mkdir(filepath.Join(nginxDir, "conf"), os.ModePerm)
 	if err != nil {
-		return fmt.Errorf("create nginx-conf/conf dir for nginx.conf: %s", err)
+		return fmt.Errorf("create nginx/conf dir for nginx.conf: %s", err)
 	}
 
 	envoyConfParser := parser.NewEnvoyConfParser()
 	sdsCredParser := parser.NewSdsCredParser(sdsCreds)
 	sdsValidationParser := parser.NewSdsServerValidationParser(sdsValidation)
 
-	nginxConfParser := parser.NewNginxConfig(envoyConfParser, sdsCredParser, sdsValidationParser, confDir)
+	nginxConfParser := parser.NewNginxConfig(envoyConfParser, sdsCredParser, sdsValidationParser, nginxDir)
 
 	errorChan := make(chan error)
 	readyChan := make(chan bool)
@@ -131,11 +131,11 @@ func reloadNginx(nginxPath string, nginxConfParser parser.NginxConfig) error {
 		return fmt.Errorf("write tls files: %s", err)
 	}
 
-	confDir := nginxConfParser.GetConfDir()
+	nginxDir := nginxConfParser.GetNginxDir()
 
-	log.Println("envoy-nginx application: reload nginx:", nginxPath, "-p", confDir, "-s", "reload")
+	log.Println("envoy-nginx application: reload nginx:", nginxPath, "-p", nginxDir, "-s", "reload")
 
-	c := exec.Command(nginxPath, "-p", confDir, "-s", "reload")
+	c := exec.Command(nginxPath, "-p", nginxDir, "-s", "reload")
 	c.Stdout = os.Stdout
 	c.Stderr = os.Stderr
 	return c.Run()
@@ -155,17 +155,17 @@ func (a App) startNginx(nginxPath string, nginxConfParser parser.NginxConfig, en
 		return fmt.Errorf("generate nginx config from envoy config: %s", err)
 	}
 
-	confDir := nginxConfParser.GetConfDir()
+	nginxDir := nginxConfParser.GetNginxDir()
 
 	a.logger.Println("envoy-nginx application: tailing error log")
-	err = a.tailer.Tail(filepath.Join(confDir, "logs", "error.log"))
+	err = a.tailer.Tail(filepath.Join(nginxDir, "logs", "error.log"))
 	if err != nil {
 		return fmt.Errorf("tail error log: %s", err)
 	}
 
-	a.logger.Println(fmt.Sprintf("envoy-nginx application: start nginx: %s -p %s", nginxPath, confDir))
+	a.logger.Println(fmt.Sprintf("envoy-nginx application: start nginx: %s -p %s", nginxPath, nginxDir))
 
-	err = a.cmd.Run(nginxPath, "-p", confDir)
+	err = a.cmd.Run(nginxPath, "-p", nginxDir)
 	if err != nil {
 		return fmt.Errorf("cmd run: %s", err)
 	}

@@ -77,7 +77,7 @@ var _ = Describe("App", func() {
 
 			Expect(cmd.RunCall.Receives[0].Binary).To(Equal(nginxPath))
 			Expect(cmd.RunCall.Receives[0].Args).To(ConsistOf(
-				"-p", ContainSubstring("nginx-conf"),
+				"-p", ContainSubstring("nginx"),
 			))
 			nginxConfDir = cmd.RunCall.Receives[0].Args[1]
 

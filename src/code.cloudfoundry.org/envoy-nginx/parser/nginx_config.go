@@ -41,7 +41,7 @@ type NginxConfig struct {
 	envoyConfParser     envoyConfParser
 	sdsCredParser       sdsCredParser
 	sdsValidationParser sdsValidationParser
-	confDir             string
+	nginxDir            string
 	confFile            string
 	certFile            string
 	keyFile             string
@@ -49,22 +49,22 @@ type NginxConfig struct {
 	pidFile             string
 }
 
-func NewNginxConfig(envoyConfParser envoyConfParser, sdsCredParser sdsCredParser, sdsValidationParser sdsValidationParser, confDir string) NginxConfig {
+func NewNginxConfig(envoyConfParser envoyConfParser, sdsCredParser sdsCredParser, sdsValidationParser sdsValidationParser, nginxDir string) NginxConfig {
 	return NginxConfig{
 		envoyConfParser:     envoyConfParser,
 		sdsCredParser:       sdsCredParser,
 		sdsValidationParser: sdsValidationParser,
-		confDir:             confDir,
-		confFile:            filepath.Join(confDir, "conf", "nginx.conf"),
-		certFile:            filepath.Join(confDir, "cert.pem"),
-		keyFile:             filepath.Join(confDir, "key.pem"),
-		trustedCAFile:       filepath.Join(confDir, "ca.pem"),
-		pidFile:             filepath.Join(confDir, "nginx.pid"),
+		nginxDir:            nginxDir,
+		confFile:            filepath.Join(nginxDir, "conf", "nginx.conf"),
+		certFile:            filepath.Join(nginxDir, "cert.pem"),
+		keyFile:             filepath.Join(nginxDir, "key.pem"),
+		trustedCAFile:       filepath.Join(nginxDir, "ca.pem"),
+		pidFile:             filepath.Join(nginxDir, "nginx.pid"),
 	}
 }
 
-func (n NginxConfig) GetConfDir() string {
-	return n.confDir
+func (n NginxConfig) GetNginxDir() string {
+	return n.nginxDir
 }
 
 func (n NginxConfig) GetConfFile() string {
