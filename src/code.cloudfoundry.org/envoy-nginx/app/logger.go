@@ -15,6 +15,6 @@ func NewLogger(writer io.Writer) *Logger {
 	}
 }
 
-func (l *Logger) Println(message string) {
-	fmt.Fprintln(l.writer, fmt.Sprintf("%s\n", message))
+func (l *Logger) Println(v ...interface{}) {
+	fmt.Fprintln(l.writer, fmt.Sprintln(v...))
 }

@@ -1,16 +1,18 @@
 package fakes
 
+import "fmt"
+
 type Logger struct {
 	PrintlnCall struct {
 		Receives struct {
-			Message string
+			Message []interface{}
 		}
 		Messages []string
 	}
 }
 
-func (l *Logger) Println(message string) {
-	l.PrintlnCall.Receives.Message = message
+func (l *Logger) Println(v ...interface{}) {
+	l.PrintlnCall.Receives.Message = v
 
-	l.PrintlnCall.Messages = append(l.PrintlnCall.Messages, message)
+	l.PrintlnCall.Messages = append(l.PrintlnCall.Messages, fmt.Sprintln(v...))
 }

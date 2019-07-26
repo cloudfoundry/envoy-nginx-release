@@ -97,6 +97,7 @@ var _ = Describe("Acceptance", func() {
 				err := RotateCert("../fixtures/cf_assets_envoy_config/sds-server-cert-and-key-rotated.yaml", sdsCredsFile)
 				Expect(err).ToNot(HaveOccurred())
 
+				Eventually(session.Out).Should(gbytes.Say("detected change in sdsfile"))
 				Eventually(session.Out).Should(gbytes.Say(fmt.Sprintf("-p,%s,-s,reload", strings.Replace(nginxDir, `\`, `\\`, -1))))
 
 				expectedCert := `-----BEGIN CERTIFICATE-----

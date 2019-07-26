@@ -3,7 +3,6 @@ package app
 import (
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -19,7 +18,7 @@ type App struct {
 }
 
 type logger interface {
-	Println(string)
+	Println(...interface{})
 }
 
 type tailer interface {
@@ -42,8 +41,6 @@ func NewApp(logger logger, cmd cmd, tailer tailer, envoyConfig string) App {
 // Searching for nginx.exe in the same directory
 // that our app binary is running in.
 func (a App) GetNginxPath() (path string, err error) {
-	log.SetOutput(os.Stdout)
-
 	mypath, err := os.Executable()
 	if err != nil {
 		return "", fmt.Errorf("executable path: %s", err)
@@ -65,8 +62,6 @@ func (a App) GetNginxPath() (path string, err error) {
 // and reload nginx when the creds rotate, the other to start
 // nginx.
 func (a App) Load(nginxPath, sdsCreds, sdsValidation string) error {
-	log.SetOutput(os.Stdout)
-
 	nginxDir, err := ioutil.TempDir("", "nginx")
 	if err != nil {
 		return fmt.Errorf("create nginx dir: %s", err)
@@ -93,7 +88,7 @@ func (a App) Load(nginxPath, sdsCreds, sdsValidation string) error {
 
 	go func() {
 		errorChan <- WatchFile(sdsCreds, readyChan, func() error {
-			log.Printf("detected change in sdsfile (%s)\n", sdsCreds)
+			a.logger.Println("detected change in sdsfile (%s)\n", sdsCreds)
 
 			sdsFd, err := os.Stat(sdsCreds)
 			if err != nil {
@@ -103,10 +98,10 @@ func (a App) Load(nginxPath, sdsCreds, sdsValidation string) error {
 			* with one of the notifications reporting an empty file. NOOP in that case
 			 */
 			if sdsFd.Size() < 1 {
-				log.Printf("detected change in sdsfile (%s) was a false alarm. NOOP.\n", sdsCreds)
+				a.logger.Println("detected change in sdsfile (%s) was a false alarm. NOOP.\n", sdsCreds)
 				return nil
 			}
-			return reloadNginx(nginxPath, nginxConfParser)
+			return a.reloadNginx(nginxPath, nginxConfParser)
 		})
 	}()
 
@@ -125,7 +120,7 @@ func (a App) Load(nginxPath, sdsCreds, sdsValidation string) error {
 
 // Rotates cert, key, and ca cert in nginx config directory.
 // Reloads nginx.
-func reloadNginx(nginxPath string, nginxConfParser parser.NginxConfig) error {
+func (a App) reloadNginx(nginxPath string, nginxConfParser parser.NginxConfig) error {
 	err := nginxConfParser.WriteTLSFiles()
 	if err != nil {
 		return fmt.Errorf("write tls files: %s", err)
@@ -133,7 +128,7 @@ func reloadNginx(nginxPath string, nginxConfParser parser.NginxConfig) error {
 
 	nginxDir := nginxConfParser.GetNginxDir()
 
-	log.Println("envoy-nginx application: reload nginx:", nginxPath, "-p", nginxDir, "-s", "reload")
+	a.logger.Println("envoy-nginx application: reload nginx:", nginxPath, "-p", nginxDir, "-s", "reload")
 
 	c := exec.Command(nginxPath, "-p", nginxDir, "-s", "reload")
 	c.Stdout = os.Stdout
