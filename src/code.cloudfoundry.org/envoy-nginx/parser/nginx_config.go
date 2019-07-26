@@ -165,7 +165,7 @@ stream {
 
 	err = ioutil.WriteFile(n.confFile, []byte(confTemplate), FilePerm)
 	if err != nil {
-		return fmt.Errorf("write file %s failed: %s", n.confFile, err)
+		return fmt.Errorf("%s - write file failed: %s", n.confFile, err)
 	}
 
 	return nil
