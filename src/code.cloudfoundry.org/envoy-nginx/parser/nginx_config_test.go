@@ -281,7 +281,7 @@ var _ = Describe("Nginx Config", func() {
 			// The trick is to pass a directory that isn't real.
 			It("returns a helpful error message", func() {
 				err := nginxConfig.Generate(EnvoyConfigFixture)
-				Expect(err.Error()).To(ContainSubstring("nginx.conf: no such file or directory"))
+				Expect(err.Error()).To(ContainSubstring("write file not-a-real-dir/conf/nginx.conf failed:"))
 			})
 		})
 	})
