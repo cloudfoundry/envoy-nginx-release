@@ -63,7 +63,7 @@ var _ = Describe("App", func() {
 		})
 	})
 
-	Describe("Load", func() {
+	Describe("Run", func() {
 		var nginxConfDir string
 
 		AfterEach(func() {
@@ -72,7 +72,7 @@ var _ = Describe("App", func() {
 		})
 
 		It("configures and starts nginx", func() {
-			err := application.Load(nginxPath, SdsCreds, SdsValidation)
+			err := application.Run(nginxPath, SdsCreds, SdsValidation)
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(cmd.RunCall.Receives[0].Binary).To(Equal(nginxPath))
@@ -97,7 +97,7 @@ var _ = Describe("App", func() {
 			})
 
 			It("returns a helpful error", func() {
-				err := application.Load(nginxPath, SdsCreds, SdsValidation)
+				err := application.Run(nginxPath, SdsCreds, SdsValidation)
 				Expect(err).To(MatchError("cmd run: banana"))
 
 				Expect(logger.PrintlnCall.Messages).To(ContainElement(ContainSubstring("start nginx: ")))
@@ -110,7 +110,7 @@ var _ = Describe("App", func() {
 			})
 
 			It("returns a helpful error", func() {
-				err := application.Load(nginxPath, SdsCreds, SdsValidation)
+				err := application.Run(nginxPath, SdsCreds, SdsValidation)
 				Expect(err).To(MatchError("tail error log: banana"))
 			})
 		})
@@ -122,7 +122,7 @@ var _ = Describe("App", func() {
 			})
 
 			PIt("returns a helpful error", func() {
-				err := application.Load(nginxPath, SdsCreds, SdsValidation)
+				err := application.Run(nginxPath, SdsCreds, SdsValidation)
 				Expect(err).To(MatchError("generate nginx config from envoy config: banana"))
 			})
 		})
@@ -134,7 +134,7 @@ var _ = Describe("App", func() {
 			})
 
 			PIt("returns a helpful error", func() {
-				err := application.Load(nginxPath, SdsCreds, SdsValidation)
+				err := application.Run(nginxPath, SdsCreds, SdsValidation)
 				Expect(err).To(MatchError("write tls files: banana"))
 			})
 		})
