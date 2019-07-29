@@ -15,6 +15,7 @@ type App struct {
 	cmd         cmd
 	tailer      tailer
 	envoyConfig string
+	nginxBin    string
 }
 
 type logger interface {
@@ -35,7 +36,13 @@ func NewApp(logger logger, cmd cmd, tailer tailer, envoyConfig string) App {
 		cmd:         cmd,
 		tailer:      tailer,
 		envoyConfig: envoyConfig,
+		// Will be set on Run()
+		nginxBin: "",
 	}
+}
+
+func (a *App) SetNginxBin(nginxPath string) {
+	a.nginxBin = nginxPath
 }
 
 // Searching for nginx.exe in the same directory
@@ -61,7 +68,8 @@ func (a App) GetNginxPath() (path string, err error) {
 // Creating two goroutines: one to watch the sds creds file
 // and reload nginx when the creds rotate, the other to start
 // nginx.
-func (a App) Load(nginxPath, sdsCreds, sdsValidation string) error {
+func (a App) Run(nginxPath, sdsCreds, sdsValidation string) error {
+	a.SetNginxBin(nginxPath)
 	nginxDir, err := ioutil.TempDir("", "nginx")
 	if err != nil {
 		return fmt.Errorf("create nginx dir: %s", err)
@@ -101,13 +109,13 @@ func (a App) Load(nginxPath, sdsCreds, sdsValidation string) error {
 				a.logger.Println("detected change in sdsfile (%s) was a false alarm. NOOP.\n", sdsCreds)
 				return nil
 			}
-			return a.reloadNginx(nginxPath, nginxConfParser)
+			return a.reloadNginx(nginxConfParser)
 		})
 	}()
 
 	go func() {
 		<-readyChan
-		errorChan <- a.startNginx(nginxPath, nginxConfParser, a.envoyConfig)
+		errorChan <- a.startNginx(nginxConfParser)
 	}()
 
 	err = <-errorChan
@@ -120,7 +128,7 @@ func (a App) Load(nginxPath, sdsCreds, sdsValidation string) error {
 
 // Rotates cert, key, and ca cert in nginx config directory.
 // Reloads nginx.
-func (a App) reloadNginx(nginxPath string, nginxConfParser parser.NginxConfig) error {
+func (a App) reloadNginx(nginxConfParser parser.NginxConfig) error {
 	err := nginxConfParser.WriteTLSFiles()
 	if err != nil {
 		return fmt.Errorf("write tls files: %s", err)
@@ -128,9 +136,9 @@ func (a App) reloadNginx(nginxPath string, nginxConfParser parser.NginxConfig) e
 
 	nginxDir := nginxConfParser.GetNginxDir()
 
-	a.logger.Println("envoy-nginx application: reload nginx:", nginxPath, "-p", nginxDir, "-s", "reload")
+	a.logger.Println("envoy-nginx application: reload nginx:", a.nginxBin, "-p", nginxDir, "-s", "reload")
 
-	c := exec.Command(nginxPath, "-p", nginxDir, "-s", "reload")
+	c := exec.Command(a.nginxBin, "-p", nginxDir, "-s", "reload")
 	c.Stdout = os.Stdout
 	c.Stderr = os.Stderr
 	return c.Run()
@@ -139,13 +147,13 @@ func (a App) reloadNginx(nginxPath string, nginxConfParser parser.NginxConfig) e
 // Generates nginx config from envoy config.
 // Writes cert, key, and ca cert to files in nginx config directory.
 // Starts nginx.
-func (a App) startNginx(nginxPath string, nginxConfParser parser.NginxConfig, envoyConf string) error {
+func (a App) startNginx(nginxConfParser parser.NginxConfig) error {
 	err := nginxConfParser.WriteTLSFiles()
 	if err != nil {
 		return fmt.Errorf("write tls files: %s", err)
 	}
 
-	err = nginxConfParser.Generate(envoyConf)
+	err = nginxConfParser.Generate(a.envoyConfig)
 	if err != nil {
 		return fmt.Errorf("generate nginx config from envoy config: %s", err)
 	}
@@ -158,9 +166,9 @@ func (a App) startNginx(nginxPath string, nginxConfParser parser.NginxConfig, en
 		return fmt.Errorf("tail error log: %s", err)
 	}
 
-	a.logger.Println(fmt.Sprintf("envoy-nginx application: start nginx: %s -p %s", nginxPath, nginxDir))
+	a.logger.Println(fmt.Sprintf("envoy-nginx application: start nginx: %s -p %s", a.nginxBin, nginxDir))
 
-	err = a.cmd.Run(nginxPath, "-p", nginxDir)
+	err = a.cmd.Run(a.nginxBin, "-p", nginxDir)
 	if err != nil {
 		return fmt.Errorf("cmd run: %s", err)
 	}

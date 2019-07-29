@@ -23,7 +23,7 @@ func main() {
 		log.Fatalf("envoy-nginx application: get nginx-path: %s", err)
 	}
 
-	err = application.Load(nginxPath, opts.SdsCreds, opts.SdsValidation)
+	err = application.Run(nginxPath, opts.SdsCreds, opts.SdsValidation)
 	if err != nil {
 		log.Fatalf("envoy-nginx application: load: %s", err)
 	}
