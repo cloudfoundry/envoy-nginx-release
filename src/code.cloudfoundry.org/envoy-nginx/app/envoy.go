@@ -2,7 +2,6 @@ package app
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -68,19 +67,15 @@ func (a App) GetNginxPath() (path string, err error) {
 // Creating two goroutines: one to watch the sds creds file
 // and reload nginx when the creds rotate, the other to start
 // nginx.
-func (a App) Run(nginxPath, sdsCreds, sdsValidation string) error {
-	a.SetNginxBin(nginxPath)
-	nginxDir, err := ioutil.TempDir("", "nginx")
-	if err != nil {
-		return fmt.Errorf("create nginx dir: %s", err)
-	}
+func (a App) Run(nginxConfDir, nginxBinPath, sdsCreds, sdsValidation string) error {
+	a.SetNginxBin(nginxBinPath)
 
-	err = os.Mkdir(filepath.Join(nginxDir, "logs"), os.ModePerm)
+	err := os.Mkdir(filepath.Join(nginxConfDir, "logs"), os.ModePerm)
 	if err != nil {
 		return fmt.Errorf("create nginx/logs dir for error.log: %s", err)
 	}
 
-	err = os.Mkdir(filepath.Join(nginxDir, "conf"), os.ModePerm)
+	err = os.Mkdir(filepath.Join(nginxConfDir, "conf"), os.ModePerm)
 	if err != nil {
 		return fmt.Errorf("create nginx/conf dir for nginx.conf: %s", err)
 	}
@@ -89,7 +84,7 @@ func (a App) Run(nginxPath, sdsCreds, sdsValidation string) error {
 	sdsCredParser := parser.NewSdsCredParser(sdsCreds)
 	sdsValidationParser := parser.NewSdsServerValidationParser(sdsValidation)
 
-	nginxConfParser := parser.NewNginxConfig(envoyConfParser, sdsCredParser, sdsValidationParser, nginxDir)
+	nginxConfParser := parser.NewNginxConfig(envoyConfParser, sdsCredParser, sdsValidationParser, nginxConfDir)
 
 	errorChan := make(chan error)
 	readyChan := make(chan bool)

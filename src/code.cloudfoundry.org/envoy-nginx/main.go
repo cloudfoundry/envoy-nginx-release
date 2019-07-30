@@ -1,6 +1,7 @@
 package main
 
 import (
+	"io/ioutil"
 	"log"
 	"os"
 
@@ -18,12 +19,17 @@ func main() {
 	stdout := app.NewLogger(os.Stdout)
 	application := app.NewApp(stdout, cmd, tailer, opts.EnvoyConfig)
 
-	nginxPath, err := application.GetNginxPath()
+	nginxBinPath, err := application.GetNginxPath()
 	if err != nil {
 		log.Fatalf("envoy-nginx application: get nginx-path: %s", err)
 	}
 
-	err = application.Run(nginxPath, opts.SdsCreds, opts.SdsValidation)
+	nginxConfDir, err := ioutil.TempDir("", "nginx")
+	if err != nil {
+		log.Fatalf("envoy-nginx application: create nginx config dir: %s", err)
+	}
+
+	err = application.Run(nginxConfDir, nginxBinPath, opts.SdsCreds, opts.SdsValidation)
 	if err != nil {
 		log.Fatalf("envoy-nginx application: load: %s", err)
 	}
