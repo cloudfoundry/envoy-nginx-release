@@ -22,8 +22,8 @@ type EnvoyConfParser struct {
 			EnvoyConf parser.EnvoyConf
 		}
 		Returns struct {
-			Clusters      []parser.Cluster
-			NameToPortMap map[string]string
+			Clusters                []parser.Cluster
+			NameToPortAndCiphersMap map[string]parser.PortAndCiphers
 		}
 	}
 
@@ -45,11 +45,11 @@ func (e *EnvoyConfParser) ReadUnmarshalEnvoyConfig(envoyConfFile string) (parser
 	return e.ReadUnmarshalEnvoyConfigCall.Returns.EnvoyConf, e.ReadUnmarshalEnvoyConfigCall.Returns.Error
 }
 
-func (e *EnvoyConfParser) GetClusters(envoyConf parser.EnvoyConf) ([]parser.Cluster, map[string]string) {
+func (e *EnvoyConfParser) GetClusters(envoyConf parser.EnvoyConf) ([]parser.Cluster, map[string]parser.PortAndCiphers) {
 	e.GetClustersCall.CallCount++
 	e.GetClustersCall.Receives.EnvoyConf = envoyConf
 
-	return e.GetClustersCall.Returns.Clusters, e.GetClustersCall.Returns.NameToPortMap
+	return e.GetClustersCall.Returns.Clusters, e.GetClustersCall.Returns.NameToPortAndCiphersMap
 }
 
 func (e *EnvoyConfParser) GetMTLS(envoyConf parser.EnvoyConf) bool {

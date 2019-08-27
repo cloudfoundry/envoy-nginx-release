@@ -53,7 +53,21 @@ type Config struct {
 }
 
 type TLSContext struct {
-	RequireClientCertificate bool `yaml:"require_client_certificate,omitempty"`
+	CommonTLSContext         CommonTLSContext `yaml:"common_tls_context,omitempty"`
+	RequireClientCertificate bool             `yaml:"require_client_certificate,omitempty"`
+}
+
+type CommonTLSContext struct {
+	TLSParams TLSParams `yaml:"tls_params,omitempty"`
+}
+
+type TLSParams struct {
+	CipherSuites []string `yaml:"cipher_suites,omitempty"`
+}
+
+type PortAndCiphers struct {
+	Port    string
+	Ciphers string
 }
 
 type EnvoyConfParser struct{}
@@ -79,20 +93,34 @@ func (e EnvoyConfParser) ReadUnmarshalEnvoyConfig(envoyConfFile string) (EnvoyCo
 	return conf, nil
 }
 
+// helper function to format array of strings into single string separated by colons
+func convertStringArrayToString(stringArray []string) (ret string) {
+	for ind, val := range stringArray {
+		if ind == 0 {
+			ret = val
+		} else {
+			ret += ":" + val
+		}
+	}
+	return ret
+}
+
 // Parses the Envoy conf file and extracts the clusters and a map of cluster names to listeners
-func (e EnvoyConfParser) GetClusters(conf EnvoyConf) (clusters []Cluster, nameToPortMap map[string]string) {
+func (e EnvoyConfParser) GetClusters(conf EnvoyConf) (clusters []Cluster, nameToPortAndCiphersMap map[string]PortAndCiphers) {
 	for i := 0; i < len(conf.StaticResources.Clusters); i++ {
 		clusters = append(clusters, conf.StaticResources.Clusters[i])
 	}
 
-	nameToPortMap = make(map[string]string)
+	nameToPortAndCiphersMap = make(map[string]PortAndCiphers)
 	for i := 0; i < len(conf.StaticResources.Listeners); i++ {
 		clusterName := conf.StaticResources.Listeners[i].FilterChains[0].Filters[0].Config.Cluster
 		listenerPort := conf.StaticResources.Listeners[i].Address.SocketAddress.PortValue
-		nameToPortMap[clusterName] = listenerPort
+		ciphersArray := conf.StaticResources.Listeners[i].FilterChains[0].TLSContext.CommonTLSContext.TLSParams.CipherSuites
+		ciphers := convertStringArrayToString(ciphersArray)
+		nameToPortAndCiphersMap[clusterName] = PortAndCiphers{listenerPort, ciphers}
 	}
 
-	return clusters, nameToPortMap
+	return clusters, nameToPortAndCiphersMap
 }
 
 // Checks if MTLS is enabled in the Envoy conf file.

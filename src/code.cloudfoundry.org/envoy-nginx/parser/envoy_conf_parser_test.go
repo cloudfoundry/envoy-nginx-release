@@ -64,19 +64,23 @@ var _ = Describe("EnvoyConfigParser", func() {
 			It("returns a set of clusters", func() {
 				conf, err := envoyConfParser.ReadUnmarshalEnvoyConfig(EnvoyConfigFixture)
 				Expect(err).NotTo(HaveOccurred())
-				clusters, nameToPortMap := envoyConfParser.GetClusters(conf)
+				clusters, nameToPortAndCiphersMap := envoyConfParser.GetClusters(conf)
 
 				Expect(clusters).To(HaveLen(3))
-				Expect(nameToPortMap).To(HaveLen(3))
+				Expect(nameToPortAndCiphersMap).To(HaveLen(3))
+
+				Expect(nameToPortAndCiphersMap["0-service-cluster"].Ciphers).To(Equal("ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-GCM-SHA256"))
+				Expect(nameToPortAndCiphersMap["1-service-cluster"].Ciphers).To(Equal("ECDHE-RSA-AES256-GCM-SHA384"))
+				Expect(nameToPortAndCiphersMap["2-service-cluster"].Ciphers).To(Equal(""))
 			})
 		})
 		Context("when envoyConf has no data", func() {
 			It("returns empty clusters and nameToPortMap", func() {
 				emptyConf, err := envoyConfParser.ReadUnmarshalEnvoyConfig("not-a-real-file")
 				Expect(err.Error()).To(ContainSubstring("Failed to read envoy config: open not-a-real-file:"))
-				clusters, nameToPortMap := envoyConfParser.GetClusters(emptyConf)
+				clusters, nameToPortAndCiphersMap := envoyConfParser.GetClusters(emptyConf)
 				Expect(clusters).To(HaveLen(0))
-				Expect(nameToPortMap).To(HaveLen(0))
+				Expect(nameToPortAndCiphersMap).To(HaveLen(0))
 			})
 		})
 	})

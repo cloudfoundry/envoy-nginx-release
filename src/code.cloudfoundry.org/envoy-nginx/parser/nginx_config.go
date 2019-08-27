@@ -25,7 +25,7 @@ type BaseTemplate struct {
 
 type envoyConfParser interface {
 	ReadUnmarshalEnvoyConfig(envoyConfFile string) (EnvoyConf, error)
-	GetClusters(conf EnvoyConf) ([]Cluster, map[string]string)
+	GetClusters(conf EnvoyConf) ([]Cluster, map[string]PortAndCiphers)
 	GetMTLS(conf EnvoyConf) bool
 }
 
@@ -85,7 +85,7 @@ func (n NginxConfig) Generate(envoyConfFile string) error {
 		return fmt.Errorf("read and unmarshal Envoy config: %s", err)
 	}
 
-	clusters, nameToPortMap := n.envoyConfParser.GetClusters(envoyConf)
+	clusters, nameToPortAndCiphersMap := n.envoyConfParser.GetClusters(envoyConf)
 
 	const baseTemplate = `
     upstream {{.Name}} {
@@ -118,11 +118,9 @@ func (n NginxConfig) Generate(envoyConfFile string) error {
 
 	mtlsEnabled := n.envoyConfParser.GetMTLS(envoyConf)
 
-	supportedCipherSuites := "ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-GCM-SHA256"
-
 	//Execute the template for each socket address
 	for _, c := range clusters {
-		listenerPort, exists := nameToPortMap[c.Name]
+		listenerPortAndCiphers, exists := nameToPortAndCiphersMap[c.Name]
 		if !exists {
 			return fmt.Errorf("port is missing for cluster name %s", c.Name)
 		}
@@ -136,8 +134,8 @@ func (n NginxConfig) Generate(envoyConfFile string) error {
 			TrustedCA:       unixCA,
 			MTLS:            mtlsEnabled,
 
-			ListenerPort: listenerPort,
-			Ciphers:      supportedCipherSuites,
+			ListenerPort: listenerPortAndCiphers.Port,
+			Ciphers:      listenerPortAndCiphers.Ciphers,
 		}
 
 		err = t.Execute(out, bts)

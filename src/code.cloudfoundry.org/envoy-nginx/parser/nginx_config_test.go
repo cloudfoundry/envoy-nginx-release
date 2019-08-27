@@ -115,10 +115,10 @@ var _ = Describe("Nginx Config", func() {
 		BeforeEach(func() {
 			envoyConfParser.ReadUnmarshalEnvoyConfigCall.Returns.Error = nil
 			envoyConfParser.GetClustersCall.Returns.Clusters = testClusters()
-			envoyConfParser.GetClustersCall.Returns.NameToPortMap = map[string]string{
-				"0-service-cluster": "61001",
-				"1-service-cluster": "61002",
-				"2-service-cluster": "61003",
+			envoyConfParser.GetClustersCall.Returns.NameToPortAndCiphersMap = map[string]parser.PortAndCiphers{
+				"0-service-cluster": parser.PortAndCiphers{"61001", "ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-GCM-SHA256"},
+				"1-service-cluster": parser.PortAndCiphers{"61002", "banana_ciphers"},
+				"2-service-cluster": parser.PortAndCiphers{"61003", ""},
 			}
 			envoyConfParser.GetMTLSCall.Returns.MTLS = true
 		})
@@ -222,6 +222,8 @@ var _ = Describe("Nginx Config", func() {
 
 				By("having a ssl_ciphers directive", func() {
 					Expect(string(config)).To(ContainSubstring("ssl_ciphers ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-GCM-SHA256"))
+					Expect(string(config)).To(ContainSubstring("ssl_ciphers banana_ciphers"))
+					Expect(string(config)).To(ContainSubstring("ssl_ciphers ;"))
 				})
 			})
 		})
@@ -263,7 +265,7 @@ var _ = Describe("Nginx Config", func() {
 		Context("when a listener port is missing for a cluster name", func() {
 			BeforeEach(func() {
 				envoyConfParser.GetClustersCall.Returns.Clusters = []parser.Cluster{{Name: "banana"}}
-				envoyConfParser.GetClustersCall.Returns.NameToPortMap = map[string]string{}
+				envoyConfParser.GetClustersCall.Returns.NameToPortAndCiphersMap = map[string]parser.PortAndCiphers{}
 			})
 
 			It("should return a custom error", func() {
