@@ -10,30 +10,8 @@ The job/package has to be `envoy_windows` because that's what diego components l
 
 Also see: https://github.com/cloudfoundry/envoy-release
 
+### update nginx
+Run `scripts/update-nginx-blob`
 
-## Steps to update `nginx` in the bosh release
-
-Download nginx
-```
-curl http://nginx.org/download/nginx-1.17.1.zip --output /tmp/nginx.zip
-```
-
-
-Rezip nginx directory so its not nested
-```
-mkdir nginx-stuff
-cd /tmp/nginx-stuff`
-mv /tmp/nginx.zip .
-unzip nginx.zip
-cd nginx-1.17.1
-zip ../envoy-nginx.zip *
-```
-
-Add and upload the envoy-nginx blob
-```
-cd path/to/envoy-nginx-release
-bosh add-blob /tmp/nginx-stuff/envoy-nginx.zip envoy-nginx/envoy-nginx.zip
-# set blobstore credentials 
-set_bosh_windows_s3_blobstore
-bosh upload-blobs
-```
+### update package specs
+Run `scripts/sync-package-specs`
