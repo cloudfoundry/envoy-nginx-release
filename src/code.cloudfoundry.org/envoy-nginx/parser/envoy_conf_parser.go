@@ -3,6 +3,7 @@ package parser
 import (
 	"fmt"
 	"io/ioutil"
+	"strings"
 
 	yaml "gopkg.in/yaml.v2"
 )
@@ -93,18 +94,6 @@ func (e EnvoyConfParser) ReadUnmarshalEnvoyConfig(envoyConfFile string) (EnvoyCo
 	return conf, nil
 }
 
-// helper function to format array of strings into single string separated by colons
-func convertStringArrayToString(stringArray []string) (ret string) {
-	for ind, val := range stringArray {
-		if ind == 0 {
-			ret = val
-		} else {
-			ret += ":" + val
-		}
-	}
-	return ret
-}
-
 // Parses the Envoy conf file and extracts the clusters and a map of cluster names to listeners
 func (e EnvoyConfParser) GetClusters(conf EnvoyConf) (clusters []Cluster, nameToPortAndCiphersMap map[string]PortAndCiphers) {
 	for i := 0; i < len(conf.StaticResources.Clusters); i++ {
@@ -116,7 +105,7 @@ func (e EnvoyConfParser) GetClusters(conf EnvoyConf) (clusters []Cluster, nameTo
 		clusterName := conf.StaticResources.Listeners[i].FilterChains[0].Filters[0].Config.Cluster
 		listenerPort := conf.StaticResources.Listeners[i].Address.SocketAddress.PortValue
 		ciphersArray := conf.StaticResources.Listeners[i].FilterChains[0].TLSContext.CommonTLSContext.TLSParams.CipherSuites
-		ciphers := convertStringArrayToString(ciphersArray)
+		ciphers := strings.Join(ciphersArray, ":")
 		nameToPortAndCiphersMap[clusterName] = PortAndCiphers{listenerPort, ciphers}
 	}
 
