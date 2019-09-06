@@ -8,8 +8,8 @@ echo "create /tmp/nginx-download"
 mkdir /tmp/nginx-download
 
 echo "download latest nginx"
-latestVer=$(curl -s 'http://nginx.org/en/download.html' | sed 's/</\'$'\n''</g' | sed -n '/>Mainline version$/,$ p' | egrep -m1 -o '/download/nginx-.+\.zip')
-curl "http://nginx.org/${latestVer}" --output /tmp/nginx-download/nginx.zip
+downloadPath=$(curl -s 'http://nginx.org/en/download.html' | sed 's/</\'$'\n''</g' | sed -n '/>Mainline version$/,$ p' | egrep -m1 -o '/download/nginx-.+\.zip')
+curl "http://nginx.org/${downloadPath}" --output /tmp/nginx-download/nginx.zip
 
 echo "repackage nginx zip"
 pushd /tmp/nginx-download > /dev/null
@@ -26,14 +26,18 @@ popd > /dev/null
 echo "navigate to envoy-nginx-release"
 pushd ~/workspace/envoy-nginx-release > /dev/null
 
+  echo "remove current envoy-nginx blob"
+  bosh blobs | grep envoy-nginx | awk '{print $1}' | xargs -I {} bosh remove-blob
+
   echo "check that config/private.yml with blobstore credentials exists"
-  if [ ! -f "~/workspace/envoy-nginx-release/config/private.yml" ]; then
+  if [ ! -f "${HOME}/workspace/envoy-nginx-release/config/private.yml" ]; then
     echo "run set_bosh_windows_s3_blobstore to create the config/private.yml"
     exit 1
   fi
 
-  echo "add envoy-nginx blob"
-  bosh add-blob /tmp/nginx-download/envoy-nginx.zip envoy-nginx/envoy-nginx.zip
+  echo "add newer envoy-nginx blob"
+  newVersion=$(echo $downloadPath | grep -oP '[\d\.]+\d+')
+  bosh add-blob /tmp/nginx-download/envoy-nginx.zip envoy-nginx/envoy-nginx-${newVersion}.zip
 
   echo "upload blobs"
   bosh upload-blobs

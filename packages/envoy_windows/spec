@@ -5,7 +5,7 @@ dependencies:
 - golang-1.12-windows
 
 files:
-  - envoy-nginx/envoy-nginx.zip
+  - envoy-nginx/envoy-nginx*.zip
   - code.cloudfoundry.org/envoy-nginx/*.go # gosub
   - code.cloudfoundry.org/envoy-nginx/app/*.go # gosub
   - code.cloudfoundry.org/envoy-nginx/parser/*.go # gosub
