@@ -91,7 +91,7 @@ func (a App) Run(nginxConfDir, nginxBinPath, sdsCreds, sdsValidation string) err
 
 	go func() {
 		errorChan <- WatchFile(sdsCreds, readyChan, func() error {
-			a.logger.Println("detected change in sdsfile (%s)\n", sdsCreds)
+			a.logger.Println(fmt.Sprintf("detected change in sdsfile: %s \n", sdsCreds))
 
 			sdsFd, err := os.Stat(sdsCreds)
 			if err != nil {
@@ -101,7 +101,7 @@ func (a App) Run(nginxConfDir, nginxBinPath, sdsCreds, sdsValidation string) err
 			* with one of the notifications reporting an empty file. NOOP in that case
 			 */
 			if sdsFd.Size() < 1 {
-				a.logger.Println("detected change in sdsfile (%s) was a false alarm. NOOP.\n", sdsCreds)
+				a.logger.Println("detected change in sdsfile was a false alarm. NOOP.\n")
 				return nil
 			}
 			return a.reloadNginx(nginxConfParser)
