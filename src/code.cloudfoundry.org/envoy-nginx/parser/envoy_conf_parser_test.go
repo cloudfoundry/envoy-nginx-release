@@ -23,8 +23,8 @@ var _ = Describe("EnvoyConfigParser", func() {
 			conf, err := envoyConfParser.ReadUnmarshalEnvoyConfig(EnvoyConfigFixture)
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(conf.StaticResources.Clusters).To(HaveLen(3))
-			Expect(conf.StaticResources.Listeners).To(HaveLen(3))
+			Expect(conf.StaticResources.Clusters).To(HaveLen(2))
+			Expect(conf.StaticResources.Listeners).To(HaveLen(2))
 		})
 
 		Context("when envoyConf doesn't exist", func() {
@@ -66,8 +66,8 @@ var _ = Describe("EnvoyConfigParser", func() {
 				Expect(err).NotTo(HaveOccurred())
 				clusters, nameToPortAndCiphersMap := envoyConfParser.GetClusters(conf)
 
-				Expect(clusters).To(HaveLen(3))
-				Expect(nameToPortAndCiphersMap).To(HaveLen(3))
+				Expect(clusters).To(HaveLen(2))
+				Expect(nameToPortAndCiphersMap).To(HaveLen(2))
 
 				Expect(nameToPortAndCiphersMap["0-service-cluster"].Ciphers).To(Equal("ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-GCM-SHA256"))
 				Expect(nameToPortAndCiphersMap["1-service-cluster"].Ciphers).To(Equal("ECDHE-RSA-AES256-GCM-SHA384"))

@@ -298,37 +298,67 @@ func convertToUnixPath(path string) string {
 func testClusters() []parser.Cluster {
 	return []parser.Cluster{
 		{
-			Hosts: []parser.Host{
-				{
-					SocketAddress: parser.SocketAddress{
-						Address:   "172.30.2.245",
-						PortValue: "8080",
-					},
-				},
-			},
 			Name: "0-service-cluster",
-		},
-		{
-			Hosts: []parser.Host{
-				{
-					SocketAddress: parser.SocketAddress{
-						Address:   "172.30.2.245",
-						PortValue: "2222",
+			LoadAssignment: parser.LoadAssignment{
+				Endpoints: []parser.Endpoints{
+					{
+						LBEndpoints: []parser.LBEndpoints{
+							{
+								Endpoint: parser.Endpoint{
+									Address: parser.Address{
+										SocketAddress: parser.SocketAddress{
+											Address:   "172.30.2.245",
+											PortValue: "8080",
+										},
+									},
+								},
+							},
+						},
 					},
 				},
 			},
+		},
+		{
 			Name: "1-service-cluster",
-		},
-		{
-			Hosts: []parser.Host{
-				{
-					SocketAddress: parser.SocketAddress{
-						Address:   "172.30.2.245",
-						PortValue: "1234",
+			LoadAssignment: parser.LoadAssignment{
+				Endpoints: []parser.Endpoints{
+					{
+						LBEndpoints: []parser.LBEndpoints{
+							{
+								Endpoint: parser.Endpoint{
+									Address: parser.Address{
+										SocketAddress: parser.SocketAddress{
+											Address:   "172.30.2.245",
+											PortValue: "2222",
+										},
+									},
+								},
+							},
+						},
 					},
 				},
 			},
+		},
+		{
 			Name: "2-service-cluster",
+			LoadAssignment: parser.LoadAssignment{
+				Endpoints: []parser.Endpoints{
+					{
+						LBEndpoints: []parser.LBEndpoints{
+							{
+								Endpoint: parser.Endpoint{
+									Address: parser.Address{
+										SocketAddress: parser.SocketAddress{
+											Address:   "172.30.2.245",
+											PortValue: "1234",
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
 		},
 	}
 }

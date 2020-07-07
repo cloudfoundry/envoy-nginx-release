@@ -18,17 +18,24 @@ type StaticResources struct {
 }
 
 type Cluster struct {
-	Hosts []Host `yaml:"hosts,omitempty"`
-	Name  string `yaml:"name,omitempty"`
+	Name           string         `yaml:"name,omitempty"`
+	LoadAssignment LoadAssignment `yaml:"load_assignment,omitempty"`
 }
 
-type Host struct {
-	SocketAddress SocketAddress `yaml:"socket_address,omitempty"`
+type LoadAssignment struct {
+	Endpoints []Endpoints `yaml:"endpoints,omitempty"`
 }
 
-type SocketAddress struct {
-	Address   string `yaml:"address,omitempty"`
-	PortValue string `yaml:"port_value,omitempty"`
+type Endpoints struct {
+	LBEndpoints []LBEndpoints `yaml:"lb_endpoints,omitempty"`
+}
+
+type LBEndpoints struct {
+	Endpoint Endpoint `yaml:"endpoint,omitempty"`
+}
+
+type Endpoint struct {
+	Address Address `yaml:"address,omitempty"`
 }
 
 type Listener struct {
@@ -40,20 +47,29 @@ type Address struct {
 	SocketAddress SocketAddress `yaml:"socket_address,omitempty"`
 }
 
+type SocketAddress struct {
+	Address   string `yaml:"address,omitempty"`
+	PortValue string `yaml:"port_value,omitempty"`
+}
+
 type FilterChain struct {
-	Filters    []Filter   `yaml:"filters,omitempty"`
-	TLSContext TLSContext `yaml:"tls_context,omitempty"`
+	Filters         []Filter        `yaml:"filters,omitempty"`
+	TransportSocket TransportSocket `yaml:"transport_socket,omitempty"`
 }
 
 type Filter struct {
-	Config Config `yaml:"config,omitempty"`
+	TypedConfig TypedConfigTcpProxy `yaml:"typed_config,omitempty"`
 }
 
-type Config struct {
+type TypedConfigTcpProxy struct {
 	Cluster string `yaml:"cluster,omitempty"`
 }
 
-type TLSContext struct {
+type TransportSocket struct {
+	TypedConfig TypedConfigDownstreamTlsContext `yaml:"typed_config,omitempty"`
+}
+
+type TypedConfigDownstreamTlsContext struct {
 	CommonTLSContext         CommonTLSContext `yaml:"common_tls_context,omitempty"`
 	RequireClientCertificate bool             `yaml:"require_client_certificate,omitempty"`
 }
@@ -102,9 +118,10 @@ func (e EnvoyConfParser) GetClusters(conf EnvoyConf) (clusters []Cluster, nameTo
 
 	nameToPortAndCiphersMap = make(map[string]PortAndCiphers)
 	for i := 0; i < len(conf.StaticResources.Listeners); i++ {
-		clusterName := conf.StaticResources.Listeners[i].FilterChains[0].Filters[0].Config.Cluster
+		clusterName := conf.StaticResources.Listeners[i].FilterChains[0].Filters[0].TypedConfig.Cluster
 		listenerPort := conf.StaticResources.Listeners[i].Address.SocketAddress.PortValue
-		ciphersArray := conf.StaticResources.Listeners[i].FilterChains[0].TLSContext.CommonTLSContext.TLSParams.CipherSuites
+
+		ciphersArray := conf.StaticResources.Listeners[i].FilterChains[0].TransportSocket.TypedConfig.CommonTLSContext.TLSParams.CipherSuites
 		ciphers := strings.Join(ciphersArray, ":")
 		nameToPortAndCiphersMap[clusterName] = PortAndCiphers{listenerPort, ciphers}
 	}
@@ -119,7 +136,7 @@ func (e EnvoyConfParser) GetMTLS(conf EnvoyConf) bool {
 		for _, filterChain := range listener.FilterChains {
 			// Return the first value of require_client_certificate.
 			// If we ever expect these values to be different between listeners, we can deal with it then.
-			return filterChain.TLSContext.RequireClientCertificate
+			return filterChain.TransportSocket.TypedConfig.RequireClientCertificate
 		}
 	}
 

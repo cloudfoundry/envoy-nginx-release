@@ -127,8 +127,8 @@ func (n NginxConfig) Generate(envoyConfFile string) error {
 
 		bts := BaseTemplate{
 			Name:            c.Name,
-			UpstreamAddress: c.Hosts[0].SocketAddress.Address,
-			UpstreamPort:    c.Hosts[0].SocketAddress.PortValue,
+			UpstreamAddress: c.LoadAssignment.Endpoints[0].LBEndpoints[0].Endpoint.Address.SocketAddress.Address,
+			UpstreamPort:    c.LoadAssignment.Endpoints[0].LBEndpoints[0].Endpoint.Address.SocketAddress.PortValue,
 			Cert:            unixCert,
 			Key:             unixKey,
 			TrustedCA:       unixCA,
