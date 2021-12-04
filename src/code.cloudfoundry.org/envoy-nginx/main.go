@@ -29,7 +29,7 @@ func main() {
 		log.Fatalf("envoy-nginx application: create nginx config dir: %s", err)
 	}
 
-	err = application.Run(nginxConfDir, nginxBinPath, opts.SdsCreds, opts.SdsValidation)
+	err = application.Run(nginxConfDir, nginxBinPath, opts.SdsIdCreds, opts.SdsC2CCreds, opts.SdsIdValidation)
 	if err != nil {
 		log.Fatalf("envoy-nginx application: load: %s", err)
 	}

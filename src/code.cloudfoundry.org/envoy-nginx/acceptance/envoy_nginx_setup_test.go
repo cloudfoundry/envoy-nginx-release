@@ -16,17 +16,19 @@ import (
 )
 
 const (
-	SdsCredsFixture      = "../fixtures/cf_assets_envoy_config/sds-server-cert-and-key.yaml"
-	SdsValidationFixture = "../fixtures/cf_assets_envoy_config/sds-server-validation-context.yaml"
-	EnvoyFixture         = "../fixtures/cf_assets_envoy_config/envoy.yaml"
+	SdsIdCredsFixture      = "../fixtures/cf_assets_envoy_config/sds-id-cert-and-key.yaml"
+	SdsC2CCredsFixture     = "../fixtures/cf_assets_envoy_config/sds-c2c-cert-and-key.yaml"
+	SdsIdValidationFixture = "../fixtures/cf_assets_envoy_config/sds-id-validation-context.yaml"
+	EnvoyFixture           = "../fixtures/cf_assets_envoy_config/envoy.yaml"
 )
 
 var _ = Describe("Acceptance", func() {
 	var (
-		envoyNginxBin string
-		binParentDir  string
-		sdsCredsFile  string
-		cmd           *exec.Cmd
+		envoyNginxBin   string
+		binParentDir    string
+		sdsIdCredsFile  string
+		sdsC2CCredsFile string
+		cmd             *exec.Cmd
 	)
 
 	BeforeEach(func() {
@@ -41,18 +43,26 @@ var _ = Describe("Acceptance", func() {
 		Expect(err).ToNot(HaveOccurred())
 		envoyNginxBin = filepath.Join(binParentDir, basename)
 
-		tmp, err := ioutil.TempFile("", "sdsCreds")
+		tmp, err := ioutil.TempFile("", "sdsIdCreds")
 		Expect(err).ToNot(HaveOccurred())
-		sdsCredsFile = tmp.Name()
+		sdsIdCredsFile = tmp.Name()
 		tmp.Close()
-		err = CopyFile(SdsCredsFixture, sdsCredsFile)
+		err = CopyFile(SdsIdCredsFixture, sdsIdCredsFile)
 		Expect(err).ToNot(HaveOccurred())
 
-		cmd = exec.Command(envoyNginxBin, "-c", EnvoyFixture, "--creds", sdsCredsFile, "--validation", SdsValidationFixture)
+		tmp, err = ioutil.TempFile("", "sdsC2CCreds")
+		Expect(err).ToNot(HaveOccurred())
+		sdsC2CCredsFile = tmp.Name()
+		tmp.Close()
+		err = CopyFile(SdsC2CCredsFixture, sdsC2CCredsFile)
+		Expect(err).ToNot(HaveOccurred())
+
+		cmd = exec.Command(envoyNginxBin, "-c", EnvoyFixture, "--id-creds", sdsIdCredsFile, "--c2c-creds", sdsC2CCredsFile, "--id-validation", SdsIdValidationFixture)
 	})
 
 	AfterEach(func() {
-		Expect(os.Remove(sdsCredsFile)).NotTo(HaveOccurred())
+		Expect(os.Remove(sdsIdCredsFile)).NotTo(HaveOccurred())
+		Expect(os.Remove(sdsC2CCredsFile)).NotTo(HaveOccurred())
 		Expect(os.RemoveAll(binParentDir)).NotTo(HaveOccurred())
 	})
 
@@ -69,7 +79,6 @@ var _ = Describe("Acceptance", func() {
 
 			err = os.Rename(nginxBin, filepath.Join(binParentDir, "nginx.exe"))
 			Expect(err).ToNot(HaveOccurred())
-			nginxBin = filepath.Join(binParentDir, "nginx.exe")
 
 			session, err = gexec.Start(cmd, GinkgoWriter, GinkgoWriter)
 			Expect(err).ToNot(HaveOccurred())
@@ -93,26 +102,57 @@ var _ = Describe("Acceptance", func() {
 		})
 
 		Context("when the sds file is rotated", func() {
-			It("rewrites the cert and key file and reloads nginx", func() {
-				err := RotateCert("../fixtures/cf_assets_envoy_config/sds-server-cert-and-key-rotated.yaml", sdsCredsFile)
+			It("rewrites the id cert and key file and reloads nginx", func() {
+				err := RotateCert("../fixtures/cf_assets_envoy_config/sds-id-cert-and-key-rotated.yaml", sdsIdCredsFile)
 				Expect(err).ToNot(HaveOccurred())
 
 				Eventually(session.Out).Should(gbytes.Say("detected change in sdsfile"))
 				Eventually(session.Out).Should(gbytes.Say(fmt.Sprintf("-p,%s,-s,reload", strings.Replace(nginxDir, `\`, `\\`, -1))))
 
 				expectedCert := `-----BEGIN CERTIFICATE-----
-<<NEW EXPECTED CERT 1>>
+<<NEW EXPECTED ID CERT 1>>
 -----END CERTIFICATE-----
 -----BEGIN CERTIFICATE-----
-<<NEW EXPECTED CERT 2>>
+<<NEW EXPECTED ID CERT 2>>
 -----END CERTIFICATE-----
 `
 				expectedKey := `-----BEGIN RSA PRIVATE KEY-----
-<<NEW EXPECTED KEY>>
+<<NEW EXPECTED ID KEY>>
 -----END RSA PRIVATE KEY-----
 `
-				certFile := filepath.Join(nginxDir, "cert.pem")
-				keyFile := filepath.Join(nginxDir, "key.pem")
+				certFile := filepath.Join(nginxDir, "id-cert.pem")
+				keyFile := filepath.Join(nginxDir, "id-key.pem")
+
+				currentCert, err := ioutil.ReadFile(string(certFile))
+				Expect(err).ShouldNot(HaveOccurred())
+
+				currentKey, err := ioutil.ReadFile(string(keyFile))
+				Expect(err).ShouldNot(HaveOccurred())
+
+				Expect(string(currentCert)).To(Equal(expectedCert))
+				Expect(string(currentKey)).To(Equal(expectedKey))
+			})
+
+			It("rewrites the id cert and key file and reloads nginx", func() {
+				err := RotateCert("../fixtures/cf_assets_envoy_config/sds-c2c-cert-and-key-rotated.yaml", sdsC2CCredsFile)
+				Expect(err).ToNot(HaveOccurred())
+
+				Eventually(session.Out).Should(gbytes.Say("detected change in sdsfile"))
+				Eventually(session.Out).Should(gbytes.Say(fmt.Sprintf("-p,%s,-s,reload", strings.Replace(nginxDir, `\`, `\\`, -1))))
+
+				expectedCert := `-----BEGIN CERTIFICATE-----
+<<NEW EXPECTED C2C CERT 1>>
+-----END CERTIFICATE-----
+-----BEGIN CERTIFICATE-----
+<<NEW EXPECTED C2C CERT 2>>
+-----END CERTIFICATE-----
+`
+				expectedKey := `-----BEGIN RSA PRIVATE KEY-----
+<<NEW EXPECTED C2C KEY>>
+-----END RSA PRIVATE KEY-----
+`
+				certFile := filepath.Join(nginxDir, "c2c-cert.pem")
+				keyFile := filepath.Join(nginxDir, "c2c-key.pem")
 
 				currentCert, err := ioutil.ReadFile(string(certFile))
 				Expect(err).ShouldNot(HaveOccurred())

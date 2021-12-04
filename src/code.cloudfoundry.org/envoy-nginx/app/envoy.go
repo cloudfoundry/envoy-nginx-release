@@ -67,7 +67,7 @@ func (a App) GetNginxPath() (path string, err error) {
 // Creating two goroutines: one to watch the sds creds file
 // and reload nginx when the creds rotate, the other to start
 // nginx.
-func (a App) Run(nginxConfDir, nginxBinPath, sdsCreds, sdsValidation string) error {
+func (a App) Run(nginxConfDir, nginxBinPath, sdsIdCreds, sdsC2CCreds, sdsIdValidation string) error {
 	a.SetNginxBin(nginxBinPath)
 
 	err := os.Mkdir(filepath.Join(nginxConfDir, "logs"), os.ModePerm)
@@ -81,30 +81,24 @@ func (a App) Run(nginxConfDir, nginxBinPath, sdsCreds, sdsValidation string) err
 	}
 
 	envoyConfParser := parser.NewEnvoyConfParser()
-	sdsCredParser := parser.NewSdsCredParser(sdsCreds)
-	sdsValidationParser := parser.NewSdsServerValidationParser(sdsValidation)
+	sdsIdCredParser := parser.NewSdsCredParser(sdsIdCreds)
+	sdsC2CCredParser := parser.NewSdsCredParser(sdsC2CCreds)
+	sdsIdValidationParser := parser.NewSdsIdValidationParser(sdsIdValidation)
 
-	nginxConfParser := parser.NewNginxConfig(envoyConfParser, sdsCredParser, sdsValidationParser, nginxConfDir)
+	nginxConfParser := parser.NewNginxConfig(envoyConfParser, sdsIdCredParser, sdsC2CCredParser, sdsIdValidationParser, nginxConfDir)
 
 	errorChan := make(chan error)
 	readyChan := make(chan bool)
 
 	go func() {
-		errorChan <- WatchFile(sdsCreds, readyChan, func() error {
-			a.logger.Println(fmt.Sprintf("detected change in sdsfile: %s \n", sdsCreds))
+		errorChan <- WatchFile(sdsIdCreds, readyChan, func() error {
+			return a.sdsFileUpdated(sdsIdCreds, nginxConfParser)
+		})
+	}()
 
-			sdsFd, err := os.Stat(sdsCreds)
-			if err != nil {
-				return fmt.Errorf("stat sds-server-cert-and-key.yaml: %s", err)
-			}
-			/* It's observed that sometimes fsnotify may provide a double notification
-			* with one of the notifications reporting an empty file. NOOP in that case
-			 */
-			if sdsFd.Size() < 1 {
-				a.logger.Println("detected change in sdsfile was a false alarm. NOOP.\n")
-				return nil
-			}
-			return a.reloadNginx(nginxConfParser)
+	go func() {
+		errorChan <- WatchFile(sdsC2CCreds, readyChan, func() error {
+			return a.sdsFileUpdated(sdsC2CCreds, nginxConfParser)
 		})
 	}()
 
@@ -119,6 +113,23 @@ func (a App) Run(nginxConfDir, nginxBinPath, sdsCreds, sdsValidation string) err
 	}
 
 	return nil
+}
+
+func (a App) sdsFileUpdated(fileName string, nginxConfParser parser.NginxConfig) error {
+	a.logger.Println(fmt.Sprintf("detected change in sdsfile: %s \n", fileName))
+
+	sdsFd, err := os.Stat(fileName)
+	if err != nil {
+		return fmt.Errorf("stat %s: %s", fileName, err)
+	}
+	/* It's observed that sometimes fsnotify may provide a double notification
+	* with one of the notifications reporting an empty file. NOOP in that case
+	 */
+	if sdsFd.Size() < 1 {
+		a.logger.Println("detected change in sdsfile was a false alarm. NOOP.\n")
+		return nil
+	}
+	return a.reloadNginx(nginxConfParser)
 }
 
 // Rotates cert, key, and ca cert in nginx config directory.

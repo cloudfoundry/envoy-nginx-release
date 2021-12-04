@@ -8,6 +8,13 @@ import (
 	yaml "gopkg.in/yaml.v2"
 )
 
+type SdsConfigType int
+
+const (
+	SdsIdConfigType SdsConfigType = iota
+	SdsC2CConfigType
+)
+
 type EnvoyConf struct {
 	StaticResources StaticResources `yaml:"static_resources,omitempty"`
 }
@@ -75,16 +82,23 @@ type TypedConfigDownstreamTlsContext struct {
 }
 
 type CommonTLSContext struct {
-	TLSParams TLSParams `yaml:"tls_params,omitempty"`
+	TLSCertificateSdsSecretConfigs []TLSCertificateSdsSecretConfig `yaml:"tls_certificate_sds_secret_configs,omitempty"`
+	TLSParams                      TLSParams                       `yaml:"tls_params,omitempty"`
+}
+
+type TLSCertificateSdsSecretConfig struct {
+	Name string `yaml:"name"`
 }
 
 type TLSParams struct {
 	CipherSuites []string `yaml:"cipher_suites,omitempty"`
 }
 
-type PortAndCiphers struct {
-	Port    string
-	Ciphers string
+type ListenerInfo struct {
+	Port          string
+	MTLS          bool
+	Ciphers       string
+	SdsConfigType SdsConfigType
 }
 
 type EnvoyConfParser struct{}
@@ -111,34 +125,33 @@ func (e EnvoyConfParser) ReadUnmarshalEnvoyConfig(envoyConfFile string) (EnvoyCo
 }
 
 // Parses the Envoy conf file and extracts the clusters and a map of cluster names to listeners
-func (e EnvoyConfParser) GetClusters(conf EnvoyConf) (clusters []Cluster, nameToPortAndCiphersMap map[string]PortAndCiphers) {
+func (e EnvoyConfParser) GetClusters(conf EnvoyConf) (clusters []Cluster, nameToListeners map[string][]ListenerInfo) {
 	for i := 0; i < len(conf.StaticResources.Clusters); i++ {
 		clusters = append(clusters, conf.StaticResources.Clusters[i])
 	}
 
-	nameToPortAndCiphersMap = make(map[string]PortAndCiphers)
+	nameToListeners = make(map[string][]ListenerInfo)
 	for i := 0; i < len(conf.StaticResources.Listeners); i++ {
 		clusterName := conf.StaticResources.Listeners[i].FilterChains[0].Filters[0].TypedConfig.Cluster
 		listenerPort := conf.StaticResources.Listeners[i].Address.SocketAddress.PortValue
+		mTLS := conf.StaticResources.Listeners[i].FilterChains[0].TransportSocket.TypedConfig.RequireClientCertificate
 
 		ciphersArray := conf.StaticResources.Listeners[i].FilterChains[0].TransportSocket.TypedConfig.CommonTLSContext.TLSParams.CipherSuites
 		ciphers := strings.Join(ciphersArray, ":")
-		nameToPortAndCiphersMap[clusterName] = PortAndCiphers{listenerPort, ciphers}
-	}
 
-	return clusters, nameToPortAndCiphersMap
-}
-
-// Checks if MTLS is enabled in the Envoy conf file.
-// Defaults to returning false if require_client_certificate isn't set.
-func (e EnvoyConfParser) GetMTLS(conf EnvoyConf) bool {
-	for _, listener := range conf.StaticResources.Listeners {
-		for _, filterChain := range listener.FilterChains {
-			// Return the first value of require_client_certificate.
-			// If we ever expect these values to be different between listeners, we can deal with it then.
-			return filterChain.TransportSocket.TypedConfig.RequireClientCertificate
+		var sdsConfigType SdsConfigType
+		if conf.StaticResources.Listeners[i].FilterChains[0].TransportSocket.TypedConfig.CommonTLSContext.TLSCertificateSdsSecretConfigs[0].Name == "c2c-cert-and-key" {
+			sdsConfigType = SdsC2CConfigType
+		} else {
+			sdsConfigType = SdsIdConfigType
 		}
+		nameToListeners[clusterName] = append(nameToListeners[clusterName], ListenerInfo{
+			Port:          listenerPort,
+			MTLS:          mTLS,
+			Ciphers:       ciphers,
+			SdsConfigType: sdsConfigType,
+		})
 	}
 
-	return false
+	return clusters, nameToListeners
 }

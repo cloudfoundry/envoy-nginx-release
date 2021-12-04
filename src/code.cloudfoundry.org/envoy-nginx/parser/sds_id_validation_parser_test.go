@@ -9,19 +9,19 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("SdsServerValidationParser", func() {
+var _ = Describe("SdsIdValidationParser", func() {
 	var (
-		sdsServerValidationParser parser.SdsServerValidationParser
+		sdsIdValidationParser parser.SdsIdValidationParser
 	)
 
 	BeforeEach(func() {
-		sdsServerValidationFile := "../fixtures/cf_assets_envoy_config/sds-server-validation-context.yaml"
-		sdsServerValidationParser = parser.NewSdsServerValidationParser(sdsServerValidationFile)
+		sdsIdValidationFile := "../fixtures/cf_assets_envoy_config/sds-id-validation-context.yaml"
+		sdsIdValidationParser = parser.NewSdsIdValidationParser(sdsIdValidationFile)
 	})
 
 	Describe("GetCACert", func() {
 		It("reads the sds file and returns the trusted ca cert", func() {
-			cert, err := sdsServerValidationParser.GetCACert()
+			cert, err := sdsIdValidationParser.GetCACert()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(cert).To(ContainSubstring("-----BEGIN CERTIFICATE-----"))
 		})
@@ -36,7 +36,7 @@ var _ = Describe("SdsServerValidationParser", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				invalidSdsFile = tmpFile.Name()
-				sdsServerValidationParser = parser.NewSdsServerValidationParser(invalidSdsFile)
+				sdsIdValidationParser = parser.NewSdsIdValidationParser(invalidSdsFile)
 			})
 
 			AfterEach(func() {
@@ -44,17 +44,17 @@ var _ = Describe("SdsServerValidationParser", func() {
 			})
 
 			It("returns a helpful error", func() {
-				_, err := sdsServerValidationParser.GetCACert()
+				_, err := sdsIdValidationParser.GetCACert()
 				Expect(err).To(MatchError("resources section not found in sds-server-validation-context.yaml"))
 			})
 		})
 
 		Context("when sdsCreds doesn't exist", func() {
 			BeforeEach(func() {
-				sdsServerValidationParser = parser.NewSdsServerValidationParser("not-a-real-file")
+				sdsIdValidationParser = parser.NewSdsIdValidationParser("not-a-real-file")
 			})
 			It("should return a read error", func() {
-				_, err := sdsServerValidationParser.GetCACert()
+				_, err := sdsIdValidationParser.GetCACert()
 				Expect(err.Error()).To(ContainSubstring("Failed to read sds server validation context:"))
 			})
 		})
@@ -69,7 +69,7 @@ var _ = Describe("SdsServerValidationParser", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				invalidYamlFile = tmpFile.Name()
-				sdsServerValidationParser = parser.NewSdsServerValidationParser(invalidYamlFile)
+				sdsIdValidationParser = parser.NewSdsIdValidationParser(invalidYamlFile)
 			})
 
 			AfterEach(func() {
@@ -77,7 +77,7 @@ var _ = Describe("SdsServerValidationParser", func() {
 			})
 
 			It("should return unmarshal error", func() {
-				_, err := sdsServerValidationParser.GetCACert()
+				_, err := sdsIdValidationParser.GetCACert()
 				Expect(err.Error()).To(ContainSubstring("Failed to unmarshal sds server validation context: yaml: could not find expected directive name"))
 			})
 		})

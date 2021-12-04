@@ -2,11 +2,11 @@ package parser_test
 
 import (
 	"errors"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 
 	. "github.com/onsi/ginkgo"
@@ -23,13 +23,15 @@ var _ = Describe("Nginx Config", func() {
 
 		envoyConfParser     *fakes.EnvoyConfParser
 		nginxConfig         parser.NginxConfig
-		sdsCredParser       *fakes.SdsCredParser
-		sdsValidationParser *fakes.SdsServerValidationParser
+		sdsIdCredParser     *fakes.SdsCredParser
+		sdsC2CCredParser    *fakes.SdsCredParser
+		sdsValidationParser *fakes.SdsIdValidationParser
 	)
 
 	BeforeEach(func() {
-		sdsCredParser = &fakes.SdsCredParser{}
-		sdsValidationParser = &fakes.SdsServerValidationParser{}
+		sdsIdCredParser = &fakes.SdsCredParser{}
+		sdsC2CCredParser = &fakes.SdsCredParser{}
+		sdsValidationParser = &fakes.SdsIdValidationParser{}
 		envoyConfParser = &fakes.EnvoyConfParser{}
 
 		var err error
@@ -38,7 +40,7 @@ var _ = Describe("Nginx Config", func() {
 		err = os.Mkdir(filepath.Join(tmpdir, "conf"), os.ModePerm)
 		Expect(err).ShouldNot(HaveOccurred())
 
-		nginxConfig = parser.NewNginxConfig(envoyConfParser, sdsCredParser, sdsValidationParser, tmpdir)
+		nginxConfig = parser.NewNginxConfig(envoyConfParser, sdsIdCredParser, sdsC2CCredParser, sdsValidationParser, tmpdir)
 	})
 
 	AfterEach(func() {
@@ -47,8 +49,10 @@ var _ = Describe("Nginx Config", func() {
 
 	Describe("WriteTLSFiles", func() {
 		BeforeEach(func() {
-			sdsCredParser.GetCertAndKeyCall.Returns.Cert = "some-cert"
-			sdsCredParser.GetCertAndKeyCall.Returns.Key = "some-key"
+			sdsIdCredParser.GetCertAndKeyCall.Returns.Cert = "some-id-cert"
+			sdsIdCredParser.GetCertAndKeyCall.Returns.Key = "some-id-key"
+			sdsC2CCredParser.GetCertAndKeyCall.Returns.Cert = "some-c2c-cert"
+			sdsC2CCredParser.GetCertAndKeyCall.Returns.Key = "some-c2c-key"
 			sdsValidationParser.GetCACertCall.Returns.CA = "some-ca-cert"
 		})
 
@@ -56,31 +60,53 @@ var _ = Describe("Nginx Config", func() {
 			err := nginxConfig.WriteTLSFiles()
 			Expect(err).ShouldNot(HaveOccurred())
 
-			certPath := filepath.Join(tmpdir, "cert.pem")
-			keyPath := filepath.Join(tmpdir, "key.pem")
-			caPath := filepath.Join(tmpdir, "ca.pem")
+			certPath := filepath.Join(tmpdir, "id-cert.pem")
+			keyPath := filepath.Join(tmpdir, "id-key.pem")
 
 			cert, err := ioutil.ReadFile(string(certPath))
 			Expect(err).ShouldNot(HaveOccurred())
-			Expect(string(cert)).To(Equal("some-cert"))
+			Expect(string(cert)).To(Equal("some-id-cert"))
 
 			key, err := ioutil.ReadFile(string(keyPath))
 			Expect(err).ShouldNot(HaveOccurred())
-			Expect(string(key)).To(Equal("some-key"))
+			Expect(string(key)).To(Equal("some-id-key"))
 
+			certPath = filepath.Join(tmpdir, "c2c-cert.pem")
+			keyPath = filepath.Join(tmpdir, "c2c-key.pem")
+
+			cert, err = ioutil.ReadFile(string(certPath))
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(string(cert)).To(Equal("some-c2c-cert"))
+
+			key, err = ioutil.ReadFile(string(keyPath))
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(string(key)).To(Equal("some-c2c-key"))
+
+			caPath := filepath.Join(tmpdir, "id-ca.pem")
 			ca, err := ioutil.ReadFile(string(caPath))
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(string(ca)).To(Equal("some-ca-cert"))
 		})
 
-		Context("when sds cred parser fails to get cert and key", func() {
+		Context("when id sds cred parser fails to get cert and key", func() {
 			BeforeEach(func() {
-				sdsCredParser.GetCertAndKeyCall.Returns.Error = errors.New("banana")
+				sdsIdCredParser.GetCertAndKeyCall.Returns.Error = errors.New("banana")
 			})
 
 			It("returns a helpful error message", func() {
 				err := nginxConfig.WriteTLSFiles()
-				Expect(err).To(MatchError("get cert and key from sds server cred parser: banana"))
+				Expect(err).To(MatchError("get cert and key from sds id cred parser: banana"))
+			})
+		})
+
+		Context("when c2c sds cred parser fails to get cert and key", func() {
+			BeforeEach(func() {
+				sdsC2CCredParser.GetCertAndKeyCall.Returns.Error = errors.New("banana")
+			})
+
+			It("returns a helpful error message", func() {
+				err := nginxConfig.WriteTLSFiles()
+				Expect(err).To(MatchError("get cert and key from sds c2c cred parser: banana"))
 			})
 		})
 
@@ -115,12 +141,18 @@ var _ = Describe("Nginx Config", func() {
 		BeforeEach(func() {
 			envoyConfParser.ReadUnmarshalEnvoyConfigCall.Returns.Error = nil
 			envoyConfParser.GetClustersCall.Returns.Clusters = testClusters()
-			envoyConfParser.GetClustersCall.Returns.NameToPortAndCiphersMap = map[string]parser.PortAndCiphers{
-				"0-service-cluster": parser.PortAndCiphers{"61001", "ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-GCM-SHA256"},
-				"1-service-cluster": parser.PortAndCiphers{"61002", "banana_ciphers"},
-				"2-service-cluster": parser.PortAndCiphers{"61003", ""},
+			envoyConfParser.GetClustersCall.Returns.NameToListeners = map[string][]parser.ListenerInfo{
+				"service-cluster-8080": {
+					{Port: "61001", MTLS: true, Ciphers: "ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-GCM-SHA256", SdsConfigType: parser.SdsIdConfigType},
+				},
+				"service-cluster-2222": {
+					{Port: "61002", MTLS: true, Ciphers: "banana_ciphers", SdsConfigType: parser.SdsIdConfigType},
+				},
+				"service-cluster-1234": {
+					{Port: "61003", MTLS: true, Ciphers: "", SdsConfigType: parser.SdsIdConfigType},
+					{Port: "61004", MTLS: false, Ciphers: "", SdsConfigType: parser.SdsC2CConfigType},
+				},
 			}
-			envoyConfParser.GetMTLSCall.Returns.MTLS = true
 		})
 
 		Context("when envoyConf and sdsCreds files are configured correctly", func() {
@@ -157,98 +189,51 @@ var _ = Describe("Nginx Config", func() {
 					Expect(match).NotTo(BeNil())
 				})
 
-				By("having a valid server listening on 61001", func() {
-					re := regexp.MustCompile(`[\r\n]\s*listen\s*61001\s*ssl;`)
-					match := re.Find(config)
-					Expect(match).NotTo(BeNil())
+				clusterToListeners := parseNginxConfig(config)
 
-					re = regexp.MustCompile(`[\r\n]\s*proxy_pass\s*0-service-cluster;`)
-					match = re.Find(config)
-					Expect(match).NotTo(BeNil())
+				expectedClientCertPath := convertToUnixPath(filepath.Join(tmpdir, "id-ca.pem"))
+
+				By("having valid listeners for server 8080", func() {
+					Expect(clusterToListeners["service-cluster-8080"]).To(Equal([]listenerInfo{
+						{
+							Port:           61001,
+							ClientVerify:   true,
+							ClientCertPath: expectedClientCertPath,
+							Ciphers:        "ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-GCM-SHA256",
+							Cert:           convertToUnixPath(filepath.Join(tmpdir, "id-cert.pem")),
+							Key:            convertToUnixPath(filepath.Join(tmpdir, "id-key.pem")),
+						},
+					}))
 				})
-
-				By("having a valid server listening on 61002", func() {
-					re := regexp.MustCompile(`[\r\n]\s*listen\s*61002\s*ssl;`)
-					match := re.Find(config)
-					Expect(match).NotTo(BeNil())
-
-					re = regexp.MustCompile(`[\r\n]\s*proxy_pass\s*1-service-cluster;`)
-					match = re.Find(config)
-					Expect(match).NotTo(BeNil())
+				By("having valid listeners for server 2222", func() {
+					Expect(clusterToListeners["service-cluster-2222"]).To(Equal([]listenerInfo{
+						{
+							Port:           61002,
+							ClientVerify:   true,
+							ClientCertPath: expectedClientCertPath,
+							Ciphers:        "banana_ciphers",
+							Cert:           convertToUnixPath(filepath.Join(tmpdir, "id-cert.pem")),
+							Key:            convertToUnixPath(filepath.Join(tmpdir, "id-key.pem")),
+						},
+					}))
 				})
-
-				By("having a valid server listening on 61003", func() {
-					re := regexp.MustCompile(`[\r\n]\s*listen\s*61003\s*ssl;`)
-					match := re.Find(config)
-					Expect(match).NotTo(BeNil())
-
-					re = regexp.MustCompile(`[\r\n]\s*proxy_pass\s*2-service-cluster;`)
-					match = re.Find(config)
-					Expect(match).NotTo(BeNil())
+				By("having valid listeners for server 1234", func() {
+					Expect(clusterToListeners["service-cluster-1234"]).To(Equal([]listenerInfo{
+						{
+							Port:           61003,
+							ClientVerify:   true,
+							ClientCertPath: expectedClientCertPath,
+							Cert:           convertToUnixPath(filepath.Join(tmpdir, "id-cert.pem")),
+							Key:            convertToUnixPath(filepath.Join(tmpdir, "id-key.pem")),
+						},
+						{
+							Port:         61004,
+							ClientVerify: false,
+							Cert:         convertToUnixPath(filepath.Join(tmpdir, "c2c-cert.pem")),
+							Key:          convertToUnixPath(filepath.Join(tmpdir, "c2c-key.pem")),
+						},
+					}))
 				})
-
-				By("specifying the ssl certificate", func() {
-					// TODO: test this separately for each server that is listening
-					certPath := filepath.Join(tmpdir, "cert.pem")
-					matcher := fmt.Sprintf(`[\r\n]\s*ssl_certificate\s*%s;`, convertToUnixPath(certPath))
-					re := regexp.MustCompile(matcher)
-					sslCertLine := re.Find(config)
-					Expect(sslCertLine).NotTo(BeNil())
-				})
-
-				By("specifying the ssl private key", func() {
-					keyPath := filepath.Join(tmpdir, "key.pem")
-					matcher := fmt.Sprintf(`[\r\n]\s*ssl_certificate_key\s*%s;`, convertToUnixPath(keyPath))
-					re := regexp.MustCompile(matcher)
-					sslCertKeyLine := re.Find(config)
-					Expect(sslCertKeyLine).NotTo(BeNil())
-				})
-
-				By("verifying the ssl client certificate", func() {
-					Expect(string(config)).To(ContainSubstring("ssl_verify_client on"))
-				})
-
-				By("including the ssl_client_certificate directive", func() {
-					caPath := filepath.Join(tmpdir, "ca.pem")
-					matcher := fmt.Sprintf(`[\r\n]\s*ssl_client_certificate\s*%s;`, convertToUnixPath(caPath))
-					re := regexp.MustCompile(matcher)
-					sslCACertLine := re.Find(config)
-					Expect(sslCACertLine).NotTo(BeNil())
-				})
-
-				By("having a ssl_prefer_server_ciphers directive", func() {
-					Expect(string(config)).To(ContainSubstring("ssl_prefer_server_ciphers on"))
-				})
-
-				By("having a ssl_ciphers directive", func() {
-					Expect(string(config)).To(ContainSubstring("ssl_ciphers ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-GCM-SHA256"))
-					Expect(string(config)).To(ContainSubstring("ssl_ciphers banana_ciphers"))
-					Expect(string(config)).To(ContainSubstring("ssl_ciphers ;"))
-				})
-			})
-		})
-
-		Context("when trusted ca certificates are not provided", func() {
-			BeforeEach(func() {
-				envoyConfParser.GetMTLSCall.Returns.MTLS = false
-				err := nginxConfig.Generate(EnvoyConfigFixture)
-				Expect(err).ShouldNot(HaveOccurred())
-
-				config, err = ioutil.ReadFile(nginxConfig.GetConfFile())
-				Expect(err).ShouldNot(HaveOccurred())
-			})
-
-			It("disables mtls", func() {
-				Expect(envoyConfParser.GetMTLSCall.CallCount).To(Equal(1))
-				By("not verifying the ssl client certificate")
-				Expect(string(config)).NotTo(ContainSubstring("ssl_verify_client on"))
-
-				By("not including the ssl_client_certificate directive")
-				caPath := filepath.Join(tmpdir, "ca.pem")
-				matcher := fmt.Sprintf(`[\r\n]\s*ssl_client_certificate\s*%s;`, convertToUnixPath(caPath))
-				re := regexp.MustCompile(matcher)
-				sslCACertLine := re.Find(config)
-				Expect(sslCACertLine).To(BeNil())
 			})
 		})
 
@@ -262,21 +247,9 @@ var _ = Describe("Nginx Config", func() {
 			})
 		})
 
-		Context("when a listener port is missing for a cluster name", func() {
-			BeforeEach(func() {
-				envoyConfParser.GetClustersCall.Returns.Clusters = []parser.Cluster{{Name: "banana"}}
-				envoyConfParser.GetClustersCall.Returns.NameToPortAndCiphersMap = map[string]parser.PortAndCiphers{}
-			})
-
-			It("should return a custom error", func() {
-				err := nginxConfig.Generate(EnvoyConfigFixture)
-				Expect(err).To(MatchError("port is missing for cluster name banana"))
-			})
-		})
-
 		Context("when ioutil fails to write the nginx.conf", func() {
 			BeforeEach(func() {
-				nginxConfig = parser.NewNginxConfig(envoyConfParser, sdsCredParser, sdsValidationParser, "not-a-real-dir")
+				nginxConfig = parser.NewNginxConfig(envoyConfParser, sdsIdCredParser, sdsC2CCredParser, sdsValidationParser, "not-a-real-dir")
 			})
 			// We do not test that ioutil.WriteFile fails for cert/key because
 			// our trick to cause that function to fail only works once!
@@ -295,10 +268,84 @@ func convertToUnixPath(path string) string {
 	return path
 }
 
+type listenerInfo struct {
+	Port           int
+	ClientVerify   bool
+	ClientCertPath string
+	Ciphers        string
+	Cert           string
+	Key            string
+}
+
+func parseNginxConfig(config []byte) map[string][]listenerInfo {
+	serverConfigs := strings.Split(string(config), "server {")
+	portsToClientCertificateMap := map[string][]listenerInfo{}
+	for i := 1; i < len(serverConfigs); i++ {
+		serverConfig := serverConfigs[i]
+
+		re := regexp.MustCompile("proxy_pass\\s*(.*);")
+		matches := re.FindStringSubmatch(serverConfig)
+		Expect(matches).To(HaveLen(2))
+		name := matches[1]
+
+		re = regexp.MustCompile("listen (.*) ssl;")
+		matches = re.FindStringSubmatch(serverConfig)
+		Expect(matches).To(HaveLen(2))
+		portStr := matches[1]
+		port, err := strconv.Atoi(portStr)
+		Expect(err).NotTo(HaveOccurred())
+
+		re = regexp.MustCompile("ssl_verify_client\\s*(.*);")
+		matches = re.FindStringSubmatch(serverConfig)
+		var verify bool
+		if len(matches) > 0 && matches[1] == "on" {
+			verify = true
+		}
+
+		re = regexp.MustCompile("ssl_client_certificate\\s*(.*);")
+		matches = re.FindStringSubmatch(serverConfig)
+		var certPath string
+		if len(matches) > 1 {
+			certPath = matches[1]
+		}
+
+		re = regexp.MustCompile("ssl_ciphers\\s*(.*);")
+		matches = re.FindStringSubmatch(serverConfig)
+		var ciphers string
+		if len(matches) > 1 {
+			ciphers = matches[1]
+		}
+
+		re = regexp.MustCompile("ssl_certificate\\s*(.*);")
+		matches = re.FindStringSubmatch(serverConfig)
+		var cert string
+		if len(matches) > 1 {
+			cert = matches[1]
+		}
+
+		re = regexp.MustCompile("ssl_certificate_key\\s*(.*);")
+		matches = re.FindStringSubmatch(serverConfig)
+		var key string
+		if len(matches) > 1 {
+			key = matches[1]
+		}
+
+		portsToClientCertificateMap[name] = append(portsToClientCertificateMap[name], listenerInfo{
+			Port:           port,
+			ClientVerify:   verify,
+			ClientCertPath: certPath,
+			Ciphers:        ciphers,
+			Cert:           cert,
+			Key:            key,
+		})
+	}
+	return portsToClientCertificateMap
+}
+
 func testClusters() []parser.Cluster {
 	return []parser.Cluster{
 		{
-			Name: "0-service-cluster",
+			Name: "service-cluster-8080",
 			LoadAssignment: parser.LoadAssignment{
 				Endpoints: []parser.Endpoints{
 					{
@@ -319,7 +366,7 @@ func testClusters() []parser.Cluster {
 			},
 		},
 		{
-			Name: "1-service-cluster",
+			Name: "service-cluster-2222",
 			LoadAssignment: parser.LoadAssignment{
 				Endpoints: []parser.Endpoints{
 					{
@@ -340,7 +387,7 @@ func testClusters() []parser.Cluster {
 			},
 		},
 		{
-			Name: "2-service-cluster",
+			Name: "service-cluster-1234",
 			LoadAssignment: parser.LoadAssignment{
 				Endpoints: []parser.Endpoints{
 					{

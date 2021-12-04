@@ -22,18 +22,8 @@ type EnvoyConfParser struct {
 			EnvoyConf parser.EnvoyConf
 		}
 		Returns struct {
-			Clusters                []parser.Cluster
-			NameToPortAndCiphersMap map[string]parser.PortAndCiphers
-		}
-	}
-
-	GetMTLSCall struct {
-		CallCount int
-		Receives  struct {
-			EnvoyConf parser.EnvoyConf
-		}
-		Returns struct {
-			MTLS bool
+			Clusters        []parser.Cluster
+			NameToListeners map[string][]parser.ListenerInfo
 		}
 	}
 }
@@ -45,16 +35,9 @@ func (e *EnvoyConfParser) ReadUnmarshalEnvoyConfig(envoyConfFile string) (parser
 	return e.ReadUnmarshalEnvoyConfigCall.Returns.EnvoyConf, e.ReadUnmarshalEnvoyConfigCall.Returns.Error
 }
 
-func (e *EnvoyConfParser) GetClusters(envoyConf parser.EnvoyConf) ([]parser.Cluster, map[string]parser.PortAndCiphers) {
+func (e *EnvoyConfParser) GetClusters(envoyConf parser.EnvoyConf) ([]parser.Cluster, map[string][]parser.ListenerInfo) {
 	e.GetClustersCall.CallCount++
 	e.GetClustersCall.Receives.EnvoyConf = envoyConf
 
-	return e.GetClustersCall.Returns.Clusters, e.GetClustersCall.Returns.NameToPortAndCiphersMap
-}
-
-func (e *EnvoyConfParser) GetMTLS(envoyConf parser.EnvoyConf) bool {
-	e.GetMTLSCall.CallCount++
-	e.GetMTLSCall.Receives.EnvoyConf = envoyConf
-
-	return e.GetMTLSCall.Returns.MTLS
+	return e.GetClustersCall.Returns.Clusters, e.GetClustersCall.Returns.NameToListeners
 }

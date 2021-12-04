@@ -4,101 +4,144 @@ admin:
     socket_address:
       address: 127.0.0.1
       port_value: 61003
+layered_runtime:
+  layers:
+  - name: static-layer
+    static_layer:
+      envoy:
+        reloadable_features:
+          new_tcp_connection_pool: false
 node:
   cluster: proxy-cluster
-  id: sidecar~10.255.225.12~e42dc044-5670-4b0c-78af-aa1a~x
+  id: sidecar~10.255.117.124~0c5f7150-87cf-47fa-4a1c-769e~x
 static_resources:
   clusters:
-    - circuit_breakers:
-        thresholds:
-          - max_connections: 4294967295
-      connect_timeout: 0.250s
-      load_assignment:
-        cluster_name: 0-service-cluster
-        endpoints:
-          - lb_endpoints:
-              - endpoint:
-                  address:
-                    socket_address:
-                      address: 10.255.225.12
-                      port_value: 8080
-      name: 0-service-cluster
-      type: STATIC
-    - circuit_breakers:
-        thresholds:
-          - max_connections: 4294967295
-      connect_timeout: 0.250s
-      load_assignment:
-        cluster_name: 1-service-cluster
-        endpoints:
-          - lb_endpoints:
-              - endpoint:
-                  address:
-                    socket_address:
-                      address: 10.255.225.12
-                      port_value: 2222
-      name: 1-service-cluster
-      type: STATIC
+  - circuit_breakers:
+      thresholds:
+      - max_connections: 4294967295
+      - max_pending_requests: 4294967295
+      - max_requests: 4294967295
+    connect_timeout: 0.250s
+    load_assignment:
+      cluster_name: service-cluster-8080
+      endpoints:
+      - lb_endpoints:
+        - endpoint:
+            address:
+              socket_address:
+                address: 10.255.117.124
+                port_value: 8080
+    name: service-cluster-8080
+    type: STATIC
+  - circuit_breakers:
+      thresholds:
+      - max_connections: 4294967295
+      - max_pending_requests: 4294967295
+      - max_requests: 4294967295
+    connect_timeout: 0.250s
+    load_assignment:
+      cluster_name: service-cluster-2222
+      endpoints:
+      - lb_endpoints:
+        - endpoint:
+            address:
+              socket_address:
+                address: 10.255.117.124
+                port_value: 2222
+    name: service-cluster-2222
+    type: STATIC
   listeners:
-    - address:
-        socket_address:
-          address: 0.0.0.0
-          port_value: 61001
-      filter_chains:
-        - filters:
-            - name: envoy.tcp_proxy
-              typed_config:
-                '@type': type.googleapis.com/envoy.extensions.filters.network.tcp_proxy.v3.TcpProxy
-                cluster: 0-service-cluster
-                stat_prefix: 0-stats
-          transport_socket:
-            name: listener-8080
-            typed_config:
-              '@type': type.googleapis.com/envoy.extensions.transport_sockets.tls.v3.DownstreamTlsContext
-              common_tls_context:
-                tls_certificate_sds_secret_configs:
-                  - name: server-cert-and-key
-                    sds_config:
-                      path: /etc/cf-assets/envoy_config/sds-server-cert-and-key.yaml
-                tls_params:
-                  cipher_suites:
-                    - ECDHE-RSA-AES256-GCM-SHA384
-                    - ECDHE-RSA-AES128-GCM-SHA256
-                validation_context_sds_secret_config:
-                  name: server-validation-context
-                  sds_config:
-                    path: /etc/cf-assets/envoy_config/sds-server-validation-context.yaml
-              require_client_certificate: true
-      name: listener-8080
-    - address:
-        socket_address:
-          address: 0.0.0.0
-          port_value: 61002
-      filter_chains:
-        - filters:
-            - name: envoy.tcp_proxy
-              typed_config:
-                '@type': type.googleapis.com/envoy.extensions.filters.network.tcp_proxy.v3.TcpProxy
-                cluster: 1-service-cluster
-                stat_prefix: 1-stats
-          transport_socket:
-            name: listener-2222
-            typed_config:
-              '@type': type.googleapis.com/envoy.extensions.transport_sockets.tls.v3.DownstreamTlsContext
-              common_tls_context:
-                tls_certificate_sds_secret_configs:
-                  - name: server-cert-and-key
-                    sds_config:
-                      path: /etc/cf-assets/envoy_config/sds-server-cert-and-key.yaml
-                tls_params:
-                  cipher_suites:
-                    - ECDHE-RSA-AES256-GCM-SHA384
-                validation_context_sds_secret_config:
-                  name: server-validation-context
-                  sds_config:
-                    path: /etc/cf-assets/envoy_config/sds-server-validation-context.yaml
-              require_client_certificate: true
-      name: listener-2222
+  - address:
+      socket_address:
+        address: 0.0.0.0
+        port_value: 61001
+    filter_chains:
+    - filters:
+      - name: envoy.tcp_proxy
+        typed_config:
+          '@type': type.googleapis.com/envoy.extensions.filters.network.tcp_proxy.v3.TcpProxy
+          cluster: service-cluster-8080
+          stat_prefix: stats-8080-61001
+      transport_socket:
+        name: listener-8080-61001
+        typed_config:
+          '@type': type.googleapis.com/envoy.extensions.transport_sockets.tls.v3.DownstreamTlsContext
+          common_tls_context:
+            alpn_protocols:
+            - h2,http/1.1
+            tls_certificate_sds_secret_configs:
+            - name: id-cert-and-key
+              sds_config:
+                path: /etc/cf-assets/envoy_config/sds-id-cert-and-key.yaml
+            tls_params:
+              cipher_suites:
+              - ECDHE-RSA-AES256-GCM-SHA384
+              - ECDHE-RSA-AES128-GCM-SHA256
+            validation_context_sds_secret_config:
+              name: id-validation-context
+              sds_config:
+                path: /etc/cf-assets/envoy_config/sds-id-validation-context.yaml
+          require_client_certificate: true
+    name: listener-8080-61001
+  - address:
+      socket_address:
+        address: 0.0.0.0
+        port_value: 61443
+    filter_chains:
+    - filters:
+      - name: envoy.tcp_proxy
+        typed_config:
+          '@type': type.googleapis.com/envoy.extensions.filters.network.tcp_proxy.v3.TcpProxy
+          cluster: service-cluster-8080
+          stat_prefix: stats-8080-61443
+      transport_socket:
+        name: listener-8080-61443
+        typed_config:
+          '@type': type.googleapis.com/envoy.extensions.transport_sockets.tls.v3.DownstreamTlsContext
+          common_tls_context:
+            alpn_protocols:
+            - h2,http/1.1
+            tls_certificate_sds_secret_configs:
+            - name: c2c-cert-and-key
+              sds_config:
+                path: /etc/cf-assets/envoy_config/sds-c2c-cert-and-key.yaml
+            tls_params:
+              cipher_suites:
+              - ECDHE-RSA-AES256-GCM-SHA384
+              - ECDHE-RSA-AES128-GCM-SHA256
+    name: listener-8080-61443
+  - address:
+      socket_address:
+        address: 0.0.0.0
+        port_value: 61002
+    filter_chains:
+    - filters:
+      - name: envoy.tcp_proxy
+        typed_config:
+          '@type': type.googleapis.com/envoy.extensions.filters.network.tcp_proxy.v3.TcpProxy
+          cluster: service-cluster-2222
+          stat_prefix: stats-2222-61002
+      transport_socket:
+        name: listener-2222-61002
+        typed_config:
+          '@type': type.googleapis.com/envoy.extensions.transport_sockets.tls.v3.DownstreamTlsContext
+          common_tls_context:
+            alpn_protocols:
+            - h2,http/1.1
+            tls_certificate_sds_secret_configs:
+            - name: id-cert-and-key
+              sds_config:
+                path: /etc/cf-assets/envoy_config/sds-id-cert-and-key.yaml
+            tls_params:
+              cipher_suites:
+              - ECDHE-RSA-AES256-GCM-SHA384
+              - ECDHE-RSA-AES128-GCM-SHA256
+            validation_context_sds_secret_config:
+              name: id-validation-context
+              sds_config:
+                path: /etc/cf-assets/envoy_config/sds-id-validation-context.yaml
+          require_client_certificate: true
+    name: listener-2222-61002
 stats_config:
   stats_matcher:
     reject_all: true

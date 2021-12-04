@@ -3,15 +3,17 @@ package app
 import "strings"
 
 const (
-	DefaultEnvoyConfigPath          = "C:\\etc\\cf-assets\\envoy_config\\envoy.yaml"
-	DefaultSdsCertAndKeysPath       = "C:\\etc\\cf-assets\\envoy_config\\sds-server-cert-and-key.yaml"
-	DefaultSdsValidationContextPath = "C:\\etc\\cf-assets\\envoy_config\\sds-server-validation-context.yaml"
+	DefaultEnvoyConfigPath            = "C:\\etc\\cf-assets\\envoy_config\\envoy.yaml"
+	DefaultSdsIdCertAndKeysPath       = "C:\\etc\\cf-assets\\envoy_config\\sds-id-cert-and-key.yaml"
+	DefaultSdsC2CCertAndKeysPath      = "C:\\etc\\cf-assets\\envoy_config\\sds-c2c-cert-and-key.yaml"
+	DefaultSdsIdValidationContextPath = "C:\\etc\\cf-assets\\envoy_config\\sds-id-validation-context.yaml"
 )
 
 type Options struct {
-	EnvoyConfig   string
-	SdsCreds      string
-	SdsValidation string
+	EnvoyConfig     string
+	SdsIdCreds      string
+	SdsC2CCreds     string
+	SdsIdValidation string
 }
 
 type Flags struct {
@@ -21,9 +23,10 @@ type Flags struct {
 func NewFlags() Flags {
 	return Flags{
 		options: Options{
-			EnvoyConfig:   DefaultEnvoyConfigPath,
-			SdsCreds:      DefaultSdsCertAndKeysPath,
-			SdsValidation: DefaultSdsValidationContextPath,
+			EnvoyConfig:     DefaultEnvoyConfigPath,
+			SdsIdCreds:      DefaultSdsIdCertAndKeysPath,
+			SdsC2CCreds:     DefaultSdsC2CCertAndKeysPath,
+			SdsIdValidation: DefaultSdsIdValidationContextPath,
 		},
 	}
 }
@@ -35,13 +38,17 @@ func (f Flags) Parse(args []string) Options {
 			if hasValidArgument(i, args) {
 				f.options.EnvoyConfig = args[i+1]
 			}
-		case "--creds":
+		case "--id-creds":
 			if hasValidArgument(i, args) {
-				f.options.SdsCreds = args[i+1]
+				f.options.SdsIdCreds = args[i+1]
 			}
-		case "--validation":
+		case "--c2c-creds":
 			if hasValidArgument(i, args) {
-				f.options.SdsValidation = args[i+1]
+				f.options.SdsC2CCreds = args[i+1]
+			}
+		case "--id-validation":
+			if hasValidArgument(i, args) {
+				f.options.SdsIdValidation = args[i+1]
 			}
 		}
 	}

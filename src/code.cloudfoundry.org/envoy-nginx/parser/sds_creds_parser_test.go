@@ -15,7 +15,7 @@ var _ = Describe("SdsCredParser", func() {
 	)
 
 	BeforeEach(func() {
-		sdsCredsFile := "../fixtures/cf_assets_envoy_config/sds-server-cert-and-key.yaml"
+		sdsCredsFile := "../fixtures/cf_assets_envoy_config/sds-id-cert-and-key.yaml"
 		sdsCredParser = parser.NewSdsCredParser(sdsCredsFile)
 	})
 

@@ -12,21 +12,24 @@ import (
 const FilePerm = 0644
 
 type BaseTemplate struct {
+	Name            string
 	UpstreamAddress string
 	UpstreamPort    string
-	ListenerPort    string
-	Name            string
-	Key             string
-	Cert            string
 	TrustedCA       string
-	MTLS            bool
-	Ciphers         string
+	Servers         []TemplateServer
+}
+
+type TemplateServer struct {
+	Port    string
+	MTLS    bool
+	Key     string
+	Cert    string
+	Ciphers string
 }
 
 type envoyConfParser interface {
 	ReadUnmarshalEnvoyConfig(envoyConfFile string) (EnvoyConf, error)
-	GetClusters(conf EnvoyConf) ([]Cluster, map[string]PortAndCiphers)
-	GetMTLS(conf EnvoyConf) bool
+	GetClusters(conf EnvoyConf) ([]Cluster, map[string][]ListenerInfo)
 }
 
 type sdsCredParser interface {
@@ -39,26 +42,32 @@ type sdsValidationParser interface {
 
 type NginxConfig struct {
 	envoyConfParser     envoyConfParser
-	sdsCredParser       sdsCredParser
+	sdsIdCredParser     sdsCredParser
+	sdsC2CCredParser    sdsCredParser
 	sdsValidationParser sdsValidationParser
 	nginxDir            string
 	confFile            string
-	certFile            string
-	keyFile             string
+	idCertFile          string
+	idKeyFile           string
+	c2cCertFile         string
+	c2cKeyFile          string
 	trustedCAFile       string
 	pidFile             string
 }
 
-func NewNginxConfig(envoyConfParser envoyConfParser, sdsCredParser sdsCredParser, sdsValidationParser sdsValidationParser, nginxDir string) NginxConfig {
+func NewNginxConfig(envoyConfParser envoyConfParser, sdsIdCredParser sdsCredParser, sdsC2CCredParser sdsCredParser, sdsValidationParser sdsValidationParser, nginxDir string) NginxConfig {
 	return NginxConfig{
 		envoyConfParser:     envoyConfParser,
-		sdsCredParser:       sdsCredParser,
+		sdsIdCredParser:     sdsIdCredParser,
+		sdsC2CCredParser:    sdsC2CCredParser,
 		sdsValidationParser: sdsValidationParser,
 		nginxDir:            nginxDir,
 		confFile:            filepath.Join(nginxDir, "conf", "nginx.conf"),
-		certFile:            filepath.Join(nginxDir, "cert.pem"),
-		keyFile:             filepath.Join(nginxDir, "key.pem"),
-		trustedCAFile:       filepath.Join(nginxDir, "ca.pem"),
+		idCertFile:          filepath.Join(nginxDir, "id-cert.pem"),
+		idKeyFile:           filepath.Join(nginxDir, "id-key.pem"),
+		trustedCAFile:       filepath.Join(nginxDir, "id-ca.pem"),
+		c2cCertFile:         filepath.Join(nginxDir, "c2c-cert.pem"),
+		c2cKeyFile:          filepath.Join(nginxDir, "c2c-key.pem"),
 		pidFile:             filepath.Join(nginxDir, "nginx.pid"),
 	}
 }
@@ -85,26 +94,28 @@ func (n NginxConfig) Generate(envoyConfFile string) error {
 		return fmt.Errorf("read and unmarshal Envoy config: %s", err)
 	}
 
-	clusters, nameToPortAndCiphersMap := n.envoyConfParser.GetClusters(envoyConf)
+	clusters, nameToListeners := n.envoyConfParser.GetClusters(envoyConf)
 
 	const baseTemplate = `
     upstream {{.Name}} {
       server {{.UpstreamAddress}}:{{.UpstreamPort}};
     }
 
+    {{range .Servers}}
     server {
-        listen {{.ListenerPort}} ssl;
+        listen {{.Port}} ssl;
         ssl_certificate        {{.Cert}};
         ssl_certificate_key    {{.Key}};
         {{ if .MTLS }}
-        ssl_client_certificate {{.TrustedCA}};
+        ssl_client_certificate {{$.TrustedCA}};
         ssl_verify_client on;
         {{ end }}
-        proxy_pass {{.Name}};
+        proxy_pass {{$.Name}};
 
 				ssl_prefer_server_ciphers on;
 				ssl_ciphers {{.Ciphers}};
     }
+	{{end}}
 	`
 	//create buffer to store template output
 	out := &bytes.Buffer{}
@@ -112,30 +123,37 @@ func (n NginxConfig) Generate(envoyConfFile string) error {
 	//Create a new template and parse the conf template into it
 	t := template.Must(template.New("baseTemplate").Parse(baseTemplate))
 
-	unixCert := convertToUnixPath(n.certFile)
-	unixKey := convertToUnixPath(n.keyFile)
+	unixIdCert := convertToUnixPath(n.idCertFile)
+	unixIdKey := convertToUnixPath(n.idKeyFile)
+	unixC2CCert := convertToUnixPath(n.c2cCertFile)
+	unixC2CKey := convertToUnixPath(n.c2cKeyFile)
 	unixCA := convertToUnixPath(n.trustedCAFile)
-
-	mtlsEnabled := n.envoyConfParser.GetMTLS(envoyConf)
 
 	//Execute the template for each socket address
 	for _, c := range clusters {
-		listenerPortAndCiphers, exists := nameToPortAndCiphersMap[c.Name]
-		if !exists {
-			return fmt.Errorf("port is missing for cluster name %s", c.Name)
-		}
-
 		bts := BaseTemplate{
 			Name:            c.Name,
 			UpstreamAddress: c.LoadAssignment.Endpoints[0].LBEndpoints[0].Endpoint.Address.SocketAddress.Address,
 			UpstreamPort:    c.LoadAssignment.Endpoints[0].LBEndpoints[0].Endpoint.Address.SocketAddress.PortValue,
-			Cert:            unixCert,
-			Key:             unixKey,
 			TrustedCA:       unixCA,
-			MTLS:            mtlsEnabled,
+		}
 
-			ListenerPort: listenerPortAndCiphers.Port,
-			Ciphers:      listenerPortAndCiphers.Ciphers,
+		for _, listener := range nameToListeners[c.Name] {
+			var cert, key string
+			if listener.SdsConfigType == SdsIdConfigType {
+				cert = unixIdCert
+				key = unixIdKey
+			} else {
+				cert = unixC2CCert
+				key = unixC2CKey
+			}
+			bts.Servers = append(bts.Servers, TemplateServer{
+				Port:    listener.Port,
+				MTLS:    listener.MTLS,
+				Cert:    cert,
+				Key:     key,
+				Ciphers: listener.Ciphers,
+			})
 		}
 
 		err = t.Execute(out, bts)
@@ -170,17 +188,32 @@ stream {
 }
 
 func (n NginxConfig) WriteTLSFiles() error {
-	cert, key, err := n.sdsCredParser.GetCertAndKey()
+	cert, key, err := n.sdsIdCredParser.GetCertAndKey()
 	if err != nil {
-		return fmt.Errorf("get cert and key from sds server cred parser: %s", err)
+		return fmt.Errorf("get cert and key from sds id cred parser: %s", err)
 	}
 
-	err = ioutil.WriteFile(n.certFile, []byte(cert), FilePerm)
+	err = ioutil.WriteFile(n.idCertFile, []byte(cert), FilePerm)
 	if err != nil {
 		return fmt.Errorf("write cert: %s", err)
 	}
 
-	err = ioutil.WriteFile(n.keyFile, []byte(key), FilePerm)
+	err = ioutil.WriteFile(n.idKeyFile, []byte(key), FilePerm)
+	if err != nil {
+		return fmt.Errorf("write key: %s", err)
+	}
+
+	cert, key, err = n.sdsC2CCredParser.GetCertAndKey()
+	if err != nil {
+		return fmt.Errorf("get cert and key from sds c2c cred parser: %s", err)
+	}
+
+	err = ioutil.WriteFile(n.c2cCertFile, []byte(cert), FilePerm)
+	if err != nil {
+		return fmt.Errorf("write cert: %s", err)
+	}
+
+	err = ioutil.WriteFile(n.c2cKeyFile, []byte(key), FilePerm)
 	if err != nil {
 		return fmt.Errorf("write key: %s", err)
 	}

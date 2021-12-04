@@ -13,9 +13,10 @@ import (
 )
 
 const (
-	EnvoyConfig   = "../fixtures/cf_assets_envoy_config/envoy.yaml"
-	SdsCreds      = "../fixtures/cf_assets_envoy_config/sds-server-cert-and-key.yaml"
-	SdsValidation = "../fixtures/cf_assets_envoy_config/sds-server-validation-context.yaml"
+	EnvoyConfig     = "../fixtures/cf_assets_envoy_config/envoy.yaml"
+	SdsIdCreds      = "../fixtures/cf_assets_envoy_config/sds-id-cert-and-key.yaml"
+	SdsC2CCreds     = "../fixtures/cf_assets_envoy_config/sds-c2c-cert-and-key.yaml"
+	SdsIdValidation = "../fixtures/cf_assets_envoy_config/sds-id-validation-context.yaml"
 )
 
 var _ = Describe("App", func() {
@@ -70,7 +71,7 @@ var _ = Describe("App", func() {
 
 	Describe("Run", func() {
 		It("configures and starts nginx", func() {
-			err := application.Run(nginxConfDir, nginxBinPath, SdsCreds, SdsValidation)
+			err := application.Run(nginxConfDir, nginxBinPath, SdsIdCreds, SdsC2CCreds, SdsIdValidation)
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(cmd.RunCall.Receives[0].Binary).To(Equal(nginxBinPath))
@@ -85,7 +86,7 @@ var _ = Describe("App", func() {
 			for _, file := range files {
 				names = append(names, file.Name())
 			}
-			Expect(names).To(ConsistOf("logs", "conf", "cert.pem", "key.pem", "ca.pem"))
+			Expect(names).To(ConsistOf("logs", "conf", "id-cert.pem", "id-key.pem", "id-ca.pem", "c2c-cert.pem", "c2c-key.pem"))
 		})
 
 		Context("when running the command fails", func() {
@@ -94,7 +95,7 @@ var _ = Describe("App", func() {
 			})
 
 			It("returns a helpful error", func() {
-				err := application.Run(nginxConfDir, nginxBinPath, SdsCreds, SdsValidation)
+				err := application.Run(nginxConfDir, nginxBinPath, SdsIdCreds, SdsC2CCreds, SdsIdValidation)
 				Expect(err).To(MatchError("cmd run: banana"))
 
 				Expect(logger.PrintlnCall.Messages).To(ContainElement(ContainSubstring("start nginx: ")))
@@ -107,7 +108,7 @@ var _ = Describe("App", func() {
 			})
 
 			It("returns a helpful error", func() {
-				err := application.Run(nginxConfDir, nginxBinPath, SdsCreds, SdsValidation)
+				err := application.Run(nginxConfDir, nginxBinPath, SdsIdCreds, SdsC2CCreds, SdsIdValidation)
 				Expect(err).To(MatchError("tail error log: banana"))
 			})
 		})
@@ -119,7 +120,7 @@ var _ = Describe("App", func() {
 			})
 
 			PIt("returns a helpful error", func() {
-				err := application.Run(nginxConfDir, nginxBinPath, SdsCreds, SdsValidation)
+				err := application.Run(nginxConfDir, nginxBinPath, SdsIdCreds, SdsC2CCreds, SdsIdValidation)
 				Expect(err).To(MatchError("generate nginx config from envoy config: banana"))
 			})
 		})
@@ -131,7 +132,7 @@ var _ = Describe("App", func() {
 			})
 
 			PIt("returns a helpful error", func() {
-				err := application.Run(nginxConfDir, nginxBinPath, SdsCreds, SdsValidation)
+				err := application.Run(nginxConfDir, nginxBinPath, SdsIdCreds, SdsC2CCreds, SdsIdValidation)
 				Expect(err).To(MatchError("write tls files: banana"))
 			})
 		})

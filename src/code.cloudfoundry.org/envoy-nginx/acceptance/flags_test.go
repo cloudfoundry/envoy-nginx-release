@@ -21,7 +21,7 @@ var _ = Describe("Flags", func() {
 		envoyNginxBin, err = gexec.Build("code.cloudfoundry.org/envoy-nginx")
 		Expect(err).ToNot(HaveOccurred())
 
-		cmd = exec.Command(envoyNginxBin, "-c", EnvoyFixture, "--creds", SdsCredsFixture, "--validation", SdsValidationFixture)
+		cmd = exec.Command(envoyNginxBin, "-c", EnvoyFixture, "--id-creds", SdsIdCredsFixture, "--c2c-creds", SdsC2CCredsFixture, "--id-validation", SdsIdValidationFixture)
 	})
 
 	AfterEach(func() {

@@ -1,6 +1,6 @@
 package fakes
 
-type SdsServerValidationParser struct {
+type SdsIdValidationParser struct {
 	GetCACertCall struct {
 		CallCount int
 		Returns   struct {
@@ -10,7 +10,7 @@ type SdsServerValidationParser struct {
 	}
 }
 
-func (s SdsServerValidationParser) GetCACert() (string, error) {
+func (s SdsIdValidationParser) GetCACert() (string, error) {
 	s.GetCACertCall.CallCount++
 
 	return s.GetCACertCall.Returns.CA, s.GetCACertCall.Returns.Error

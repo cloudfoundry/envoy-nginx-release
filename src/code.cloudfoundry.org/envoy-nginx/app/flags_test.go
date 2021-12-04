@@ -15,8 +15,9 @@ var _ = Describe("Flags", func() {
 	BeforeEach(func() {
 		args = []string{
 			"-c", EnvoyConfig,
-			"--creds", SdsCreds,
-			"--validation", SdsValidation,
+			"--id-creds", SdsIdCreds,
+			"--c2c-creds", SdsC2CCreds,
+			"--id-validation", SdsIdValidation,
 		}
 		flags = app.NewFlags()
 	})
@@ -25,15 +26,17 @@ var _ = Describe("Flags", func() {
 		It("parses known flags and returns options", func() {
 			opts := flags.Parse(args)
 			Expect(opts.EnvoyConfig).To(Equal(EnvoyConfig))
-			Expect(opts.SdsCreds).To(Equal(SdsCreds))
-			Expect(opts.SdsValidation).To(Equal(SdsValidation))
+			Expect(opts.SdsIdCreds).To(Equal(SdsIdCreds))
+			Expect(opts.SdsC2CCreds).To(Equal(SdsC2CCreds))
+			Expect(opts.SdsIdValidation).To(Equal(SdsIdValidation))
 		})
 
 		It("has defaults", func() {
 			opts := flags.Parse([]string{})
 			Expect(opts.EnvoyConfig).To(Equal(app.DefaultEnvoyConfigPath))
-			Expect(opts.SdsCreds).To(Equal(app.DefaultSdsCertAndKeysPath))
-			Expect(opts.SdsValidation).To(Equal(app.DefaultSdsValidationContextPath))
+			Expect(opts.SdsIdCreds).To(Equal(app.DefaultSdsIdCertAndKeysPath))
+			Expect(opts.SdsC2CCreds).To(Equal(app.DefaultSdsC2CCertAndKeysPath))
+			Expect(opts.SdsIdValidation).To(Equal(app.DefaultSdsIdValidationContextPath))
 		})
 
 		It("does not fail with unknown flags", func() {
@@ -43,7 +46,7 @@ var _ = Describe("Flags", func() {
 
 		Context("when provided a flag with no argument", func() {
 			It("continues to use the default", func() {
-				opts := flags.Parse([]string{"-c", "--creds", "--validation", "--invalid", "invalid"})
+				opts := flags.Parse([]string{"-c", "--id-creds", "--id-validation", "--invalid", "invalid"})
 				Expect(opts.EnvoyConfig).To(Equal(app.DefaultEnvoyConfigPath))
 			})
 		})

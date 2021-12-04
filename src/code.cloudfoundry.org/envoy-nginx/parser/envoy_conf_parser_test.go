@@ -19,8 +19,14 @@ var _ = Describe("EnvoyConfigParser", func() {
 	})
 
 	Describe("ReadUnmarshalEnvoyConfig", func() {
-		It("returns an Envoy config file", func() {
+		It("returns an Envoy config file with the correct number of clusters and listeners", func() {
 			conf, err := envoyConfParser.ReadUnmarshalEnvoyConfig(EnvoyConfigFixture)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(conf.StaticResources.Clusters).To(HaveLen(2))
+			Expect(conf.StaticResources.Listeners).To(HaveLen(3))
+
+			conf, err = envoyConfParser.ReadUnmarshalEnvoyConfig(EnvoyOneListenerPerServerConfigFixture)
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(conf.StaticResources.Clusters).To(HaveLen(2))
@@ -61,58 +67,49 @@ var _ = Describe("EnvoyConfigParser", func() {
 
 	Describe("GetClusters", func() {
 		Context("when the envoy conf file is successfully unmarshaled", func() {
-			It("returns a set of clusters", func() {
+			It("returns a set of clusters for config with multiple listeners per server", func() {
 				conf, err := envoyConfParser.ReadUnmarshalEnvoyConfig(EnvoyConfigFixture)
 				Expect(err).NotTo(HaveOccurred())
-				clusters, nameToPortAndCiphersMap := envoyConfParser.GetClusters(conf)
+				clusters, nameToListeners := envoyConfParser.GetClusters(conf)
 
 				Expect(clusters).To(HaveLen(2))
-				Expect(nameToPortAndCiphersMap).To(HaveLen(2))
+				Expect(nameToListeners).To(HaveLen(2))
 
-				Expect(nameToPortAndCiphersMap["0-service-cluster"].Ciphers).To(Equal("ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-GCM-SHA256"))
-				Expect(nameToPortAndCiphersMap["1-service-cluster"].Ciphers).To(Equal("ECDHE-RSA-AES256-GCM-SHA384"))
-				Expect(nameToPortAndCiphersMap["2-service-cluster"].Ciphers).To(Equal(""))
+				Expect(nameToListeners["service-cluster-8080"]).To(HaveLen(2))
+				Expect(nameToListeners["service-cluster-8080"]).To(Equal([]parser.ListenerInfo{
+					{Port: "61001", MTLS: true, Ciphers: "ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-GCM-SHA256", SdsConfigType: parser.SdsIdConfigType},
+					{Port: "61443", MTLS: false, Ciphers: "ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-GCM-SHA256", SdsConfigType: parser.SdsC2CConfigType},
+				}))
+				Expect(nameToListeners["service-cluster-2222"]).To(Equal([]parser.ListenerInfo{
+					{Port: "61002", MTLS: true, Ciphers: "ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-GCM-SHA256", SdsConfigType: parser.SdsIdConfigType},
+				}))
+			})
+
+			It("returns a set of clusters for config with one listeners per server", func() {
+				conf, err := envoyConfParser.ReadUnmarshalEnvoyConfig(EnvoyOneListenerPerServerConfigFixture)
+				Expect(err).NotTo(HaveOccurred())
+				clusters, nameToListeners := envoyConfParser.GetClusters(conf)
+
+				Expect(clusters).To(HaveLen(2))
+				Expect(nameToListeners).To(HaveLen(2))
+
+				Expect(nameToListeners["0-service-cluster"]).To(Equal([]parser.ListenerInfo{
+					{Port: "61001", MTLS: true, Ciphers: "ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-GCM-SHA256", SdsConfigType: parser.SdsIdConfigType},
+				}))
+				Expect(nameToListeners["1-service-cluster"]).To(Equal([]parser.ListenerInfo{
+					{Port: "61002", MTLS: true, Ciphers: "ECDHE-RSA-AES256-GCM-SHA384", SdsConfigType: parser.SdsIdConfigType},
+				}))
 			})
 		})
+
 		Context("when envoyConf has no data", func() {
-			It("returns empty clusters and nameToPortMap", func() {
+			It("returns empty clusters and nameToListeners", func() {
 				emptyConf, err := envoyConfParser.ReadUnmarshalEnvoyConfig("not-a-real-file")
 				Expect(err.Error()).To(ContainSubstring("Failed to read envoy config: open not-a-real-file:"))
-				clusters, nameToPortAndCiphersMap := envoyConfParser.GetClusters(emptyConf)
+				clusters, nameToListeners := envoyConfParser.GetClusters(emptyConf)
 				Expect(clusters).To(HaveLen(0))
-				Expect(nameToPortAndCiphersMap).To(HaveLen(0))
+				Expect(nameToListeners).To(HaveLen(0))
 			})
 		})
-	})
-
-	Describe("GetMTLS", func() {
-		Context("when the envoy conf file is successfully unmarshaled", func() {
-			It("returns whether MTLS is enabled", func() {
-				conf, err := envoyConfParser.ReadUnmarshalEnvoyConfig(EnvoyConfigFixture)
-				Expect(err).NotTo(HaveOccurred())
-				mtls := envoyConfParser.GetMTLS(conf)
-				Expect(mtls).To(BeTrue())
-			})
-		})
-
-		Context("when require_client_certificate is false", func() {
-			It("should return false", func() {
-				envoyConfNoMTLS := "../fixtures/cf_assets_envoy_config/envoy-without-mtls.yaml"
-				conf, err := envoyConfParser.ReadUnmarshalEnvoyConfig(envoyConfNoMTLS)
-				Expect(err).NotTo(HaveOccurred())
-				mtls := envoyConfParser.GetMTLS(conf)
-				Expect(mtls).To(BeFalse())
-			})
-		})
-
-		Context("when envoyConf has no data", func() {
-			It("returns empty clusters and nameToPortMap", func() {
-				emptyConf, err := envoyConfParser.ReadUnmarshalEnvoyConfig("not-a-real-file")
-				Expect(err.Error()).To(ContainSubstring("Failed to read envoy config: open not-a-real-file:"))
-				mtls := envoyConfParser.GetMTLS(emptyConf)
-				Expect(mtls).To(BeFalse())
-			})
-		})
-
 	})
 })

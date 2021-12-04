@@ -8,7 +8,7 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-type SdsServerValidation struct {
+type SdsIdValidation struct {
 	Resources []ValidationResource `yaml:"resources,omitempty"`
 }
 
@@ -24,23 +24,23 @@ type TrustedCA struct {
 	InlineString string `yaml:"inline_string,omitempty"`
 }
 
-type SdsServerValidationParser struct {
+type SdsIdValidationParser struct {
 	file string
 }
 
-func NewSdsServerValidationParser(file string) SdsServerValidationParser {
-	return SdsServerValidationParser{
+func NewSdsIdValidationParser(file string) SdsIdValidationParser {
+	return SdsIdValidationParser{
 		file: file,
 	}
 }
 
-func (p SdsServerValidationParser) GetCACert() (string, error) {
+func (p SdsIdValidationParser) GetCACert() (string, error) {
 	contents, err := ioutil.ReadFile(p.file)
 	if err != nil {
 		return "", fmt.Errorf("Failed to read sds server validation context: %s", err)
 	}
 
-	auth := SdsServerValidation{}
+	auth := SdsIdValidation{}
 
 	err = yaml.Unmarshal(contents, &auth)
 	if err != nil {
