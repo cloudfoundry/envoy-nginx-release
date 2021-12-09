@@ -73,7 +73,7 @@ var _ = Describe("Acceptance", func() {
 			session  *gexec.Session
 		)
 
-		BeforeEach(func() {
+		JustBeforeEach(func() {
 			nginxBin, err := gexec.Build("code.cloudfoundry.org/envoy-nginx/fixtures/nginx")
 			Expect(err).ToNot(HaveOccurred())
 
@@ -133,7 +133,7 @@ var _ = Describe("Acceptance", func() {
 				Expect(string(currentKey)).To(Equal(expectedKey))
 			})
 
-			It("rewrites the id cert and key file and reloads nginx", func() {
+			It("rewrites the c2c cert and key file and reloads nginx", func() {
 				err := RotateCert("../fixtures/cf_assets_envoy_config/sds-c2c-cert-and-key-rotated.yaml", sdsC2CCredsFile)
 				Expect(err).ToNot(HaveOccurred())
 
@@ -162,6 +162,20 @@ var _ = Describe("Acceptance", func() {
 
 				Expect(string(currentCert)).To(Equal(expectedCert))
 				Expect(string(currentKey)).To(Equal(expectedKey))
+			})
+		})
+
+		Context("when c2c creds file is not provided", func() {
+			BeforeEach(func() {
+				cmd = exec.Command(envoyNginxBin, "-c", EnvoyFixture, "--id-creds", sdsIdCredsFile, "--id-validation", SdsIdValidationFixture)
+			})
+
+			It("does not reload the nginx", func() {
+				err := RotateCert("../fixtures/cf_assets_envoy_config/sds-c2c-cert-and-key-rotated.yaml", sdsC2CCredsFile)
+				Expect(err).ToNot(HaveOccurred())
+
+				Eventually(session.Out).ShouldNot(gbytes.Say("detected change in sdsfile"))
+				Eventually(session.Out).ShouldNot(gbytes.Say(fmt.Sprintf("-p,%s,-s,reload", strings.Replace(nginxDir, `\`, `\\`, -1))))
 			})
 		})
 	})

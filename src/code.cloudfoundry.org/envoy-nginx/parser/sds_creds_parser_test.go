@@ -16,7 +16,7 @@ var _ = Describe("SdsCredParser", func() {
 
 	BeforeEach(func() {
 		sdsCredsFile := "../fixtures/cf_assets_envoy_config/sds-id-cert-and-key.yaml"
-		sdsCredParser = parser.NewSdsCredParser(sdsCredsFile)
+		sdsCredParser = parser.NewSdsIdCredParser(sdsCredsFile)
 	})
 
 	Describe("GetCertAndKey", func() {
@@ -37,7 +37,7 @@ var _ = Describe("SdsCredParser", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				invalidSdsFile = tmpFile.Name()
-				sdsCredParser = parser.NewSdsCredParser(invalidSdsFile)
+				sdsCredParser = parser.NewSdsIdCredParser(invalidSdsFile)
 			})
 
 			AfterEach(func() {
@@ -46,13 +46,13 @@ var _ = Describe("SdsCredParser", func() {
 
 			It("returns a helpful error", func() {
 				_, _, err := sdsCredParser.GetCertAndKey()
-				Expect(err).To(MatchError("resources section not found in sds-server-cert-and-key.yaml"))
+				Expect(err).To(MatchError("resources section not found in sds cred file"))
 			})
 		})
 
 		Context("when sdsCreds doesn't exist", func() {
 			BeforeEach(func() {
-				sdsCredParser = parser.NewSdsCredParser("not-a-real-file")
+				sdsCredParser = parser.NewSdsIdCredParser("not-a-real-file")
 			})
 
 			It("should return a read error", func() {
@@ -71,7 +71,7 @@ var _ = Describe("SdsCredParser", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				invalidYamlFile = tmpFile.Name()
-				sdsCredParser = parser.NewSdsCredParser(invalidYamlFile)
+				sdsCredParser = parser.NewSdsIdCredParser(invalidYamlFile)
 			})
 
 			AfterEach(func() {

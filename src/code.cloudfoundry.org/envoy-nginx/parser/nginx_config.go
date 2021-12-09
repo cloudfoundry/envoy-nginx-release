@@ -32,19 +32,19 @@ type envoyConfParser interface {
 	GetClusters(conf EnvoyConf) ([]Cluster, map[string][]ListenerInfo)
 }
 
-type sdsCredParser interface {
+type SdsCredParser interface {
 	GetCertAndKey() (string, string, error)
+	ConfigType() SdsConfigType
 }
 
-type sdsValidationParser interface {
+type SdsValidationParser interface {
 	GetCACert() (string, error)
 }
 
 type NginxConfig struct {
 	envoyConfParser     envoyConfParser
-	sdsIdCredParser     sdsCredParser
-	sdsC2CCredParser    sdsCredParser
-	sdsValidationParser sdsValidationParser
+	sdsCredParsers      []SdsCredParser
+	sdsValidationParser SdsValidationParser
 	nginxDir            string
 	confFile            string
 	idCertFile          string
@@ -55,11 +55,10 @@ type NginxConfig struct {
 	pidFile             string
 }
 
-func NewNginxConfig(envoyConfParser envoyConfParser, sdsIdCredParser sdsCredParser, sdsC2CCredParser sdsCredParser, sdsValidationParser sdsValidationParser, nginxDir string) NginxConfig {
+func NewNginxConfig(envoyConfParser envoyConfParser, sdsCredParsers []SdsCredParser, sdsValidationParser SdsValidationParser, nginxDir string) NginxConfig {
 	return NginxConfig{
 		envoyConfParser:     envoyConfParser,
-		sdsIdCredParser:     sdsIdCredParser,
-		sdsC2CCredParser:    sdsC2CCredParser,
+		sdsCredParsers:      sdsCredParsers,
 		sdsValidationParser: sdsValidationParser,
 		nginxDir:            nginxDir,
 		confFile:            filepath.Join(nginxDir, "conf", "nginx.conf"),
@@ -188,34 +187,30 @@ stream {
 }
 
 func (n NginxConfig) WriteTLSFiles() error {
-	cert, key, err := n.sdsIdCredParser.GetCertAndKey()
-	if err != nil {
-		return fmt.Errorf("get cert and key from sds id cred parser: %s", err)
-	}
+	for _, sdsCredParser := range n.sdsCredParsers {
+		cert, key, err := sdsCredParser.GetCertAndKey()
+		if err != nil {
+			return fmt.Errorf("get cert and key from sds cred parser: %s", err)
+		}
 
-	err = ioutil.WriteFile(n.idCertFile, []byte(cert), FilePerm)
-	if err != nil {
-		return fmt.Errorf("write cert: %s", err)
-	}
+		var certFile, keyFile string
+		if sdsCredParser.ConfigType() == SdsIdConfigType {
+			certFile = n.idCertFile
+			keyFile = n.idKeyFile
+		} else {
+			certFile = n.c2cCertFile
+			keyFile = n.c2cKeyFile
+		}
 
-	err = ioutil.WriteFile(n.idKeyFile, []byte(key), FilePerm)
-	if err != nil {
-		return fmt.Errorf("write key: %s", err)
-	}
+		err = ioutil.WriteFile(certFile, []byte(cert), FilePerm)
+		if err != nil {
+			return fmt.Errorf("write cert: %s", err)
+		}
 
-	cert, key, err = n.sdsC2CCredParser.GetCertAndKey()
-	if err != nil {
-		return fmt.Errorf("get cert and key from sds c2c cred parser: %s", err)
-	}
-
-	err = ioutil.WriteFile(n.c2cCertFile, []byte(cert), FilePerm)
-	if err != nil {
-		return fmt.Errorf("write cert: %s", err)
-	}
-
-	err = ioutil.WriteFile(n.c2cKeyFile, []byte(key), FilePerm)
-	if err != nil {
-		return fmt.Errorf("write key: %s", err)
+		err = ioutil.WriteFile(keyFile, []byte(key), FilePerm)
+		if err != nil {
+			return fmt.Errorf("write key: %s", err)
+		}
 	}
 
 	caCert, err := n.sdsValidationParser.GetCACert()

@@ -40,7 +40,7 @@ var _ = Describe("Nginx Config", func() {
 		err = os.Mkdir(filepath.Join(tmpdir, "conf"), os.ModePerm)
 		Expect(err).ShouldNot(HaveOccurred())
 
-		nginxConfig = parser.NewNginxConfig(envoyConfParser, sdsIdCredParser, sdsC2CCredParser, sdsValidationParser, tmpdir)
+		nginxConfig = parser.NewNginxConfig(envoyConfParser, []parser.SdsCredParser{sdsIdCredParser, sdsC2CCredParser}, sdsValidationParser, tmpdir)
 	})
 
 	AfterEach(func() {
@@ -51,8 +51,10 @@ var _ = Describe("Nginx Config", func() {
 		BeforeEach(func() {
 			sdsIdCredParser.GetCertAndKeyCall.Returns.Cert = "some-id-cert"
 			sdsIdCredParser.GetCertAndKeyCall.Returns.Key = "some-id-key"
+			sdsIdCredParser.ConfigTypeCall.Returns.ConfigType = parser.SdsIdConfigType
 			sdsC2CCredParser.GetCertAndKeyCall.Returns.Cert = "some-c2c-cert"
 			sdsC2CCredParser.GetCertAndKeyCall.Returns.Key = "some-c2c-key"
+			sdsC2CCredParser.ConfigTypeCall.Returns.ConfigType = parser.SdsC2CConfigType
 			sdsValidationParser.GetCACertCall.Returns.CA = "some-ca-cert"
 		})
 
@@ -88,6 +90,42 @@ var _ = Describe("Nginx Config", func() {
 			Expect(string(ca)).To(Equal("some-ca-cert"))
 		})
 
+		Context("when c2c sds cred parser is not provided", func() {
+			BeforeEach(func() {
+				nginxConfig = parser.NewNginxConfig(envoyConfParser, []parser.SdsCredParser{sdsIdCredParser}, sdsValidationParser, tmpdir)
+			})
+
+			It("only writes cert and key for provided parsers", func() {
+				err := nginxConfig.WriteTLSFiles()
+				Expect(err).ShouldNot(HaveOccurred())
+
+				certPath := filepath.Join(tmpdir, "id-cert.pem")
+				keyPath := filepath.Join(tmpdir, "id-key.pem")
+
+				cert, err := ioutil.ReadFile(string(certPath))
+				Expect(err).ShouldNot(HaveOccurred())
+				Expect(string(cert)).To(Equal("some-id-cert"))
+
+				key, err := ioutil.ReadFile(string(keyPath))
+				Expect(err).ShouldNot(HaveOccurred())
+				Expect(string(key)).To(Equal("some-id-key"))
+
+				certPath = filepath.Join(tmpdir, "c2c-cert.pem")
+				keyPath = filepath.Join(tmpdir, "c2c-key.pem")
+
+				_, err = os.Stat(string(certPath))
+				Expect(err).Should(HaveOccurred())
+
+				_, err = os.Stat(string(keyPath))
+				Expect(err).Should(HaveOccurred())
+
+				caPath := filepath.Join(tmpdir, "id-ca.pem")
+				ca, err := ioutil.ReadFile(string(caPath))
+				Expect(err).ShouldNot(HaveOccurred())
+				Expect(string(ca)).To(Equal("some-ca-cert"))
+			})
+		})
+
 		Context("when id sds cred parser fails to get cert and key", func() {
 			BeforeEach(func() {
 				sdsIdCredParser.GetCertAndKeyCall.Returns.Error = errors.New("banana")
@@ -95,7 +133,7 @@ var _ = Describe("Nginx Config", func() {
 
 			It("returns a helpful error message", func() {
 				err := nginxConfig.WriteTLSFiles()
-				Expect(err).To(MatchError("get cert and key from sds id cred parser: banana"))
+				Expect(err).To(MatchError("get cert and key from sds cred parser: banana"))
 			})
 		})
 
@@ -106,7 +144,7 @@ var _ = Describe("Nginx Config", func() {
 
 			It("returns a helpful error message", func() {
 				err := nginxConfig.WriteTLSFiles()
-				Expect(err).To(MatchError("get cert and key from sds c2c cred parser: banana"))
+				Expect(err).To(MatchError("get cert and key from sds cred parser: banana"))
 			})
 		})
 
@@ -249,7 +287,7 @@ var _ = Describe("Nginx Config", func() {
 
 		Context("when ioutil fails to write the nginx.conf", func() {
 			BeforeEach(func() {
-				nginxConfig = parser.NewNginxConfig(envoyConfParser, sdsIdCredParser, sdsC2CCredParser, sdsValidationParser, "not-a-real-dir")
+				nginxConfig = parser.NewNginxConfig(envoyConfParser, []parser.SdsCredParser{sdsIdCredParser, sdsC2CCredParser}, sdsValidationParser, "not-a-real-dir")
 			})
 			// We do not test that ioutil.WriteFile fails for cert/key because
 			// our trick to cause that function to fail only works once!

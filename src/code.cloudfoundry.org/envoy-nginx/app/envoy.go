@@ -81,11 +81,16 @@ func (a App) Run(nginxConfDir, nginxBinPath, sdsIdCreds, sdsC2CCreds, sdsIdValid
 	}
 
 	envoyConfParser := parser.NewEnvoyConfParser()
-	sdsIdCredParser := parser.NewSdsCredParser(sdsIdCreds)
-	sdsC2CCredParser := parser.NewSdsCredParser(sdsC2CCreds)
+
+	sdsIdCredParser := parser.NewSdsIdCredParser(sdsIdCreds)
+	sdsCredParsers := []parser.SdsCredParser{sdsIdCredParser}
+	if sdsC2CCreds != "" {
+		sdsC2CCredParser := parser.NewSdsC2CCredParser(sdsC2CCreds)
+		sdsCredParsers = append(sdsCredParsers, sdsC2CCredParser)
+	}
 	sdsIdValidationParser := parser.NewSdsIdValidationParser(sdsIdValidation)
 
-	nginxConfParser := parser.NewNginxConfig(envoyConfParser, sdsIdCredParser, sdsC2CCredParser, sdsIdValidationParser, nginxConfDir)
+	nginxConfParser := parser.NewNginxConfig(envoyConfParser, sdsCredParsers, sdsIdValidationParser, nginxConfDir)
 
 	errorChan := make(chan error)
 	readyChan := make(chan bool)
@@ -96,11 +101,13 @@ func (a App) Run(nginxConfDir, nginxBinPath, sdsIdCreds, sdsC2CCreds, sdsIdValid
 		})
 	}()
 
-	go func() {
-		errorChan <- WatchFile(sdsC2CCreds, readyChan, func() error {
-			return a.sdsFileUpdated(sdsC2CCreds, nginxConfParser)
-		})
-	}()
+	if sdsC2CCreds != "" {
+		go func() {
+			errorChan <- WatchFile(sdsC2CCreds, readyChan, func() error {
+				return a.sdsFileUpdated(sdsC2CCreds, nginxConfParser)
+			})
+		}()
+	}
 
 	go func() {
 		<-readyChan

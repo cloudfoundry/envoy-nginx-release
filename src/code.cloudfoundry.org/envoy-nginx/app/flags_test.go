@@ -35,7 +35,7 @@ var _ = Describe("Flags", func() {
 			opts := flags.Parse([]string{})
 			Expect(opts.EnvoyConfig).To(Equal(app.DefaultEnvoyConfigPath))
 			Expect(opts.SdsIdCreds).To(Equal(app.DefaultSdsIdCertAndKeysPath))
-			Expect(opts.SdsC2CCreds).To(Equal(app.DefaultSdsC2CCertAndKeysPath))
+			Expect(opts.SdsC2CCreds).To(BeEmpty())
 			Expect(opts.SdsIdValidation).To(Equal(app.DefaultSdsIdValidationContextPath))
 		})
 

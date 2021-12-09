@@ -4,9 +4,8 @@ import "strings"
 
 const (
 	DefaultEnvoyConfigPath            = "C:\\etc\\cf-assets\\envoy_config\\envoy.yaml"
-	DefaultSdsIdCertAndKeysPath       = "C:\\etc\\cf-assets\\envoy_config\\sds-id-cert-and-key.yaml"
-	DefaultSdsC2CCertAndKeysPath      = "C:\\etc\\cf-assets\\envoy_config\\sds-c2c-cert-and-key.yaml"
-	DefaultSdsIdValidationContextPath = "C:\\etc\\cf-assets\\envoy_config\\sds-id-validation-context.yaml"
+	DefaultSdsIdCertAndKeysPath       = "C:\\etc\\cf-assets\\envoy_config\\sds-server-cert-and-key.yaml"
+	DefaultSdsIdValidationContextPath = "C:\\etc\\cf-assets\\envoy_config\\sds-server-validation-context.yaml"
 )
 
 type Options struct {
@@ -25,7 +24,6 @@ func NewFlags() Flags {
 		options: Options{
 			EnvoyConfig:     DefaultEnvoyConfigPath,
 			SdsIdCreds:      DefaultSdsIdCertAndKeysPath,
-			SdsC2CCreds:     DefaultSdsC2CCertAndKeysPath,
 			SdsIdValidation: DefaultSdsIdValidationContextPath,
 		},
 	}

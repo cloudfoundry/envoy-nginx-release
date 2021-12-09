@@ -11,7 +11,7 @@ import (
 
 var _ = Describe("SdsIdValidationParser", func() {
 	var (
-		sdsIdValidationParser parser.SdsIdValidationParser
+		sdsIdValidationParser parser.SdsValidationParser
 	)
 
 	BeforeEach(func() {

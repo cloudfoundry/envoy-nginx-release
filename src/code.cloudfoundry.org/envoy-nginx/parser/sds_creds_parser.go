@@ -29,18 +29,27 @@ type PrivateKey struct {
 	InlineString string `yaml:"inline_string,omitempty"`
 }
 
-type SdsCredParser struct {
-	file string
+type sdsCredParser struct {
+	file       string
+	configType SdsConfigType
 }
 
-func NewSdsCredParser(file string) SdsCredParser {
-	return SdsCredParser{
-		file: file,
+func NewSdsIdCredParser(file string) SdsCredParser {
+	return sdsCredParser{
+		file:       file,
+		configType: SdsIdConfigType,
+	}
+}
+
+func NewSdsC2CCredParser(file string) SdsCredParser {
+	return sdsCredParser{
+		file:       file,
+		configType: SdsC2CConfigType,
 	}
 }
 
 /* Parses the Envoy SDS file and extracts the cert and key */
-func (p SdsCredParser) GetCertAndKey() (string, string, error) {
+func (p sdsCredParser) GetCertAndKey() (string, string, error) {
 	contents, err := ioutil.ReadFile(p.file)
 	if err != nil {
 		return "", "", fmt.Errorf("Failed to read sds creds: %s", err)
@@ -54,11 +63,15 @@ func (p SdsCredParser) GetCertAndKey() (string, string, error) {
 	}
 
 	if len(auth.Resources) < 1 {
-		return "", "", errors.New("resources section not found in sds-server-cert-and-key.yaml")
+		return "", "", errors.New("resources section not found in sds cred file")
 	}
 
 	cert := auth.Resources[0].TLSCertificate.CertChain.InlineString
 	key := auth.Resources[0].TLSCertificate.PrivateKey.InlineString
 
 	return cert, key, nil
+}
+
+func (p sdsCredParser) ConfigType() SdsConfigType {
+	return p.configType
 }

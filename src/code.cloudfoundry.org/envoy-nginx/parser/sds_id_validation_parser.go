@@ -24,17 +24,17 @@ type TrustedCA struct {
 	InlineString string `yaml:"inline_string,omitempty"`
 }
 
-type SdsIdValidationParser struct {
+type sdsIdValidationParser struct {
 	file string
 }
 
-func NewSdsIdValidationParser(file string) SdsIdValidationParser {
-	return SdsIdValidationParser{
+func NewSdsIdValidationParser(file string) SdsValidationParser {
+	return sdsIdValidationParser{
 		file: file,
 	}
 }
 
-func (p SdsIdValidationParser) GetCACert() (string, error) {
+func (p sdsIdValidationParser) GetCACert() (string, error) {
 	contents, err := ioutil.ReadFile(p.file)
 	if err != nil {
 		return "", fmt.Errorf("Failed to read sds server validation context: %s", err)
