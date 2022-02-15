@@ -1,12 +1,11 @@
 $ErrorActionPreference = "Stop";
 trap { $host.SetShouldExit(1) }
 
-$BOSH_INSTALL_TARGET = Resolve-Path $env:BOSH_INSTALL_TARGET
+$BOSH_INSTALL_TARGET = Resolve-Path "${env:BOSH_INSTALL_TARGET}"
 $path=(Get-ChildItem "envoy-nginx/envoy-nginx*.zip").FullName
-
 Expand-Archive -Path $path -DestinationPath ${BOSH_INSTALL_TARGET}
 
-. C:\var\vcap\packages\golang-1.14-windows\bosh\compile.ps1
+. C:\var\vcap\packages\golang-1.17-windows\bosh\compile.ps1
 $env:GOPATH="${BOSH_INSTALL_TARGET}"
 $env:PATH="${env:GOROOT}\bin;${env:PATH}"`
 
@@ -22,7 +21,11 @@ if ($LASTEXITCODE -ge 8) {
 $pkg_name="envoy"
 $pkg_path="code.cloudfoundry.org/envoy-nginx"
 
-go.exe build -o "${BOSH_INSTALL_TARGET}\${pkg_name}.exe" "${pkg_path}"
+Push-Location $pkg_path
+go.exe build -mod vendor -o "${BOSH_INSTALL_TARGET}\${pkg_name}.exe"
 if ($LASTEXITCODE -ne 0) {
-    Write-Error "Error compiling: ${pkg_path}"
+    Write-Error "Error compiling: ${pkg_path} "
 }
+Pop-Location
+
+Exit 0
