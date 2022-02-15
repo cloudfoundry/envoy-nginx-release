@@ -2,21 +2,8 @@
 name: envoy_windows
 
 dependencies:
-- golang-1.14-windows
+- golang-1.17-windows
 
 files:
   - envoy-nginx/envoy-nginx*.zip
-  - code.cloudfoundry.org/envoy-nginx/*.go # gosub
-  - code.cloudfoundry.org/envoy-nginx/app/*.go # gosub
-  - code.cloudfoundry.org/envoy-nginx/parser/*.go # gosub
-  - code.cloudfoundry.org/envoy-nginx/vendor/github.com/fsnotify/fsnotify/*.go # gosub
-  - code.cloudfoundry.org/envoy-nginx/vendor/github.com/hpcloud/tail/*.go # gosub
-  - code.cloudfoundry.org/envoy-nginx/vendor/github.com/hpcloud/tail/ratelimiter/*.go # gosub
-  - code.cloudfoundry.org/envoy-nginx/vendor/github.com/hpcloud/tail/util/*.go # gosub
-  - code.cloudfoundry.org/envoy-nginx/vendor/github.com/hpcloud/tail/watch/*.go # gosub
-  - code.cloudfoundry.org/envoy-nginx/vendor/github.com/hpcloud/tail/winfile/*.go # gosub
-  - code.cloudfoundry.org/envoy-nginx/vendor/golang.org/x/sys/unix/*.go # gosub
-  - code.cloudfoundry.org/envoy-nginx/vendor/golang.org/x/sys/unix/*.s # gosub
-  - code.cloudfoundry.org/envoy-nginx/vendor/gopkg.in/fsnotify/fsnotify.v1/*.go # gosub
-  - code.cloudfoundry.org/envoy-nginx/vendor/gopkg.in/tomb.v1/*.go # gosub
-  - code.cloudfoundry.org/envoy-nginx/vendor/gopkg.in/yaml.v2/*.go # gosub
+  - code.cloudfoundry.org/envoy-nginx/**/*
