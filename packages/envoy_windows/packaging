@@ -5,7 +5,7 @@ $BOSH_INSTALL_TARGET = Resolve-Path "${env:BOSH_INSTALL_TARGET}"
 $path=(Get-ChildItem "envoy-nginx/envoy-nginx*.zip").FullName
 Expand-Archive -Path $path -DestinationPath ${BOSH_INSTALL_TARGET}
 
-. C:\var\vcap\packages\golang-1.17-windows\bosh\compile.ps1
+. C:\var\vcap\packages\golang-1.18-windows\bosh\compile.ps1
 $env:GOPATH="${BOSH_INSTALL_TARGET}"
 $env:PATH="${env:GOROOT}\bin;${env:PATH}"`
 
