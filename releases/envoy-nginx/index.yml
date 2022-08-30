@@ -17,4 +17,6 @@ builds:
     version: 0.8.0
   fafa8317-f9c1-4f5b-6825-a6c430a6a9f8:
     version: 0.4.0
+  fb339cb9-55e6-4b85-4e65-a12fb22bdead:
+    version: 0.11.0
 format-version: "2"
