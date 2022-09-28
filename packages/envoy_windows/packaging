@@ -22,7 +22,7 @@ $pkg_name="envoy"
 $pkg_path="code.cloudfoundry.org/envoy-nginx"
 
 Push-Location $pkg_path
-go.exe build -mod vendor -o "${BOSH_INSTALL_TARGET}\${pkg_name}.exe"
+go.exe build -buildvcs=false -mod vendor -o "${BOSH_INSTALL_TARGET}\${pkg_name}.exe"
 if ($LASTEXITCODE -ne 0) {
     Write-Error "Error compiling: ${pkg_path} "
 }
