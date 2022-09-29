@@ -1,0 +1,25 @@
+name: envoy-nginx
+version: 0.12.0
+commit_hash: 0d286f3
+uncommitted_changes: false
+jobs:
+- name: envoy_windows
+  version: 73949026a83e4445e4a48899497faebfb4902ec2796d3fdb24fb29ee3b20feb6
+  fingerprint: 73949026a83e4445e4a48899497faebfb4902ec2796d3fdb24fb29ee3b20feb6
+  sha1: sha256:45485efd4dd8d7bef2469d718c8677dcd422804820aacb4062a69aeba838f2f2
+packages:
+- name: envoy_windows
+  version: ede1c484c6309e48120047dc907aefed29e4d709e574cd96bf7786eb7d4e0f59
+  fingerprint: ede1c484c6309e48120047dc907aefed29e4d709e574cd96bf7786eb7d4e0f59
+  sha1: sha256:3a6db13814f63f4f4925ba5f59805734b47d08b10bf9793c92873b090d983756
+  dependencies:
+  - golang-1.18-windows
+- name: golang-1.18-windows
+  version: 4e671f0c2cb1b96bbf7d599cfd278d8a0c3d815274949bc4abde1584d95cdeb9
+  fingerprint: 4e671f0c2cb1b96bbf7d599cfd278d8a0c3d815274949bc4abde1584d95cdeb9
+  sha1: sha256:91c88ea4ba457e1bf2049689440d2240ed9f990664b5e7bff0e83b75af65d075
+  dependencies: []
+license:
+  version: 9a407464fbcec6dc0daf5344b8a3229142268ffb6a96b6e7cc2af30a3510499f
+  fingerprint: 9a407464fbcec6dc0daf5344b8a3229142268ffb6a96b6e7cc2af30a3510499f
+  sha1: sha256:f6c5bf6def6a652d722d43b83a761c4b3cf6a9e38231562e64a975518fa5367f
