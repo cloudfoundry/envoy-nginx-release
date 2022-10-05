@@ -2,7 +2,7 @@
 name: envoy_windows
 
 dependencies:
-- golang-1.18-windows
+- golang-1.19-windows
 
 files:
   - envoy-nginx/envoy-nginx*.zip
