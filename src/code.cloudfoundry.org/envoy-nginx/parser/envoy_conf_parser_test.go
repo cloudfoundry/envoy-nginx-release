@@ -5,7 +5,7 @@ import (
 	"os"
 
 	"code.cloudfoundry.org/envoy-nginx/parser"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
