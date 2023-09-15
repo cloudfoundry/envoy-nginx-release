@@ -7,3 +7,4 @@ dependencies:
 files:
   - envoy-nginx/envoy-nginx*.zip
   - code.cloudfoundry.org/envoy-nginx/**/*
+  - code.cloudfoundry.org/envoy-nginx/*.go # gosub
