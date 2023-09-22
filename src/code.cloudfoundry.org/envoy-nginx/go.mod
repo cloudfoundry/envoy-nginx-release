@@ -5,7 +5,7 @@ go 1.20
 require (
 	github.com/fsnotify/fsnotify v1.6.0
 	github.com/hpcloud/tail v1.0.1-0.20180514194441-a1dbeea552b7
-	github.com/onsi/ginkgo/v2 v2.12.0
+	github.com/onsi/ginkgo/v2 v2.12.1
 	github.com/onsi/gomega v1.27.10
 	gopkg.in/yaml.v2 v2.4.0
 )
