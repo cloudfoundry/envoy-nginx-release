@@ -52,14 +52,6 @@ var _ = Describe("App", func() {
 	})
 
 	Describe("NginxPath", func() {
-		Context("when nginx.exe is in the same path as our app", func() {
-			PIt("returns the path to nginx.exe", func() {
-				path, err := application.GetNginxPath()
-				Expect(err).NotTo(HaveOccurred())
-				Expect(path).To(Equal(nginxBinPath))
-			})
-		})
-
 		Context("when nginx.exe cannot be found", func() {
 			It("returns a helpful error", func() {
 				path, err := application.GetNginxPath()
@@ -110,30 +102,6 @@ var _ = Describe("App", func() {
 			It("returns a helpful error", func() {
 				err := application.Run(nginxConfDir, nginxBinPath, SdsIdCreds, SdsC2CCreds, SdsIdValidation)
 				Expect(err).To(MatchError("tail error log: banana"))
-			})
-		})
-
-		Context("when nginx conf parser generate fails", func() {
-			BeforeEach(func() {
-				// TODO: When nginxConfParser is an object on app, then we can test it's errors
-				// nginxConfParser.GenerateCall.Returns.Error = errors.New("banana")
-			})
-
-			PIt("returns a helpful error", func() {
-				err := application.Run(nginxConfDir, nginxBinPath, SdsIdCreds, SdsC2CCreds, SdsIdValidation)
-				Expect(err).To(MatchError("generate nginx config from envoy config: banana"))
-			})
-		})
-
-		Context("when nginx conf parser write tls files fails", func() {
-			BeforeEach(func() {
-				// TODO: When nginxConfParser is an object on app, then we can test it's errors
-				// nginxConfParser.WriteTlsFilesCall.Returns.Error = errors.New("banana")
-			})
-
-			PIt("returns a helpful error", func() {
-				err := application.Run(nginxConfDir, nginxBinPath, SdsIdCreds, SdsC2CCreds, SdsIdValidation)
-				Expect(err).To(MatchError("write tls files: banana"))
 			})
 		})
 	})

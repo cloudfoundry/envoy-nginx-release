@@ -13,26 +13,16 @@ import (
 var _ = Describe("Flags", func() {
 	var (
 		envoyNginxBin string
-		cmd           *exec.Cmd
 	)
 
 	BeforeEach(func() {
 		var err error
 		envoyNginxBin, err = gexec.Build("code.cloudfoundry.org/envoy-nginx")
 		Expect(err).ToNot(HaveOccurred())
-
-		cmd = exec.Command(envoyNginxBin, "-c", EnvoyFixture, "--id-creds", SdsIdCredsFixture, "--c2c-creds", SdsC2CCredsFixture, "--id-validation", SdsIdValidationFixture)
 	})
 
 	AfterEach(func() {
 		gexec.CleanupBuildArtifacts()
-	})
-
-	PIt("accepts overrides for the flags", func() {
-		session, err := gexec.Start(cmd, GinkgoWriter, GinkgoWriter)
-		Expect(err).NotTo(HaveOccurred())
-		Eventually(session).Should(gbytes.Say("hi"))
-		Eventually(session).Should(gexec.Exit(0))
 	})
 
 	Context("when passed a flag it does not recognize", func() {
