@@ -321,47 +321,47 @@ func parseNginxConfig(config []byte) map[string][]listenerInfo {
 	for i := 1; i < len(serverConfigs); i++ {
 		serverConfig := serverConfigs[i]
 
-		re := regexp.MustCompile("proxy_pass\\s*(.*);")
+		re := regexp.MustCompile(`proxy_pass\s*(.*);`)
 		matches := re.FindStringSubmatch(serverConfig)
 		Expect(matches).To(HaveLen(2))
 		name := matches[1]
 
-		re = regexp.MustCompile("listen (.*) ssl;")
+		re = regexp.MustCompile(`listen (.*) ssl;`)
 		matches = re.FindStringSubmatch(serverConfig)
 		Expect(matches).To(HaveLen(2))
 		portStr := matches[1]
 		port, err := strconv.Atoi(portStr)
 		Expect(err).NotTo(HaveOccurred())
 
-		re = regexp.MustCompile("ssl_verify_client\\s*(.*);")
+		re = regexp.MustCompile(`ssl_verify_client\s*(.*);"`)
 		matches = re.FindStringSubmatch(serverConfig)
 		var verify bool
 		if len(matches) > 0 && matches[1] == "on" {
 			verify = true
 		}
 
-		re = regexp.MustCompile("ssl_client_certificate\\s*(.*);")
+		re = regexp.MustCompile(`ssl_client_certificate\s*(.*);`)
 		matches = re.FindStringSubmatch(serverConfig)
 		var certPath string
 		if len(matches) > 1 {
 			certPath = matches[1]
 		}
 
-		re = regexp.MustCompile("ssl_ciphers\\s*(.*);")
+		re = regexp.MustCompile(`ssl_ciphers\s*(.*);`)
 		matches = re.FindStringSubmatch(serverConfig)
 		var ciphers string
 		if len(matches) > 1 {
 			ciphers = matches[1]
 		}
 
-		re = regexp.MustCompile("ssl_certificate\\s*(.*);")
+		re = regexp.MustCompile(`ssl_certificate\s*(.*);`)
 		matches = re.FindStringSubmatch(serverConfig)
 		var cert string
 		if len(matches) > 1 {
 			cert = matches[1]
 		}
 
-		re = regexp.MustCompile("ssl_certificate_key\\s*(.*);")
+		re = regexp.MustCompile(`ssl_certificate_key\s*(.*);`)
 		matches = re.FindStringSubmatch(serverConfig)
 		var key string
 		if len(matches) > 1 {
