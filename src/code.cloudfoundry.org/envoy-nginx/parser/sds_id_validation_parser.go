@@ -3,7 +3,7 @@ package parser
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"os"
 
 	"gopkg.in/yaml.v2"
 )
@@ -35,7 +35,7 @@ func NewSdsIdValidationParser(file string) SdsValidationParser {
 }
 
 func (p sdsIdValidationParser) GetCACert() (string, error) {
-	contents, err := ioutil.ReadFile(p.file)
+	contents, err := os.ReadFile(p.file)
 	if err != nil {
 		return "", fmt.Errorf("Failed to read sds server validation context: %s", err)
 	}

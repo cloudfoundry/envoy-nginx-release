@@ -1,7 +1,6 @@
 package app_test
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -22,7 +21,7 @@ var _ = Describe("LogTailer", func() {
 		BeforeEach(func() {
 			logger = &fakes.Logger{}
 			logTailer = app.NewLogTailer(logger)
-			tmpdir, err := ioutil.TempDir("", "")
+			tmpdir, err := os.MkdirTemp("", "")
 			Expect(err).NotTo(HaveOccurred())
 			errorLog = filepath.Join(tmpdir, "error.log")
 		})

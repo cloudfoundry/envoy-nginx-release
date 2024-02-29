@@ -1,17 +1,16 @@
 package testhelpers
 
 import (
-	"io/ioutil"
 	"os"
 )
 
 func CopyFile(src, dst string) error {
-	input, err := ioutil.ReadFile(src)
+	input, err := os.ReadFile(src)
 	if err != nil {
 		return err
 	}
 
-	err = ioutil.WriteFile(dst, input, 0644)
+	err = os.WriteFile(dst, input, 0644)
 	if err != nil {
 		return err
 	}
@@ -26,11 +25,11 @@ func CopyFile(src, dst string) error {
 func RotateCert(newfile, sdsfilepath string) error {
 	tmpPath := sdsfilepath + ".tmp"
 
-	contents, err := ioutil.ReadFile(newfile)
+	contents, err := os.ReadFile(newfile)
 	if err != nil {
 		return err
 	}
-	err = ioutil.WriteFile(tmpPath, contents, 0666)
+	err = os.WriteFile(tmpPath, contents, 0666)
 	if err != nil {
 		return err
 	}

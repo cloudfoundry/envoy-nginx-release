@@ -2,7 +2,6 @@ package app_test
 
 import (
 	"errors"
-	"io/ioutil"
 	"os"
 
 	"code.cloudfoundry.org/envoy-nginx/app"
@@ -40,7 +39,7 @@ var _ = Describe("App", func() {
 		nginxBinPath, err = gexec.Build("code.cloudfoundry.org/envoy-nginx/fixtures/nginx")
 		Expect(err).ToNot(HaveOccurred())
 
-		nginxConfDir, err = ioutil.TempDir("", "nginx")
+		nginxConfDir, err = os.MkdirTemp("", "nginx")
 		Expect(err).ToNot(HaveOccurred())
 
 		application = app.NewApp(logger, cmd, tailer, EnvoyConfig)
@@ -71,7 +70,7 @@ var _ = Describe("App", func() {
 				"-p", ContainSubstring("nginx"),
 			))
 
-			files, err := ioutil.ReadDir(nginxConfDir)
+			files, err := os.ReadDir(nginxConfDir)
 			Expect(err).ToNot(HaveOccurred())
 
 			names := []string{}

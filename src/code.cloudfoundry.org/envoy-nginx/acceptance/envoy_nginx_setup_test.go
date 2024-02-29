@@ -2,7 +2,6 @@ package acceptance_test
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -35,7 +34,7 @@ var _ = Describe("Acceptance", func() {
 		bin, err := gexec.Build("code.cloudfoundry.org/envoy-nginx")
 		Expect(err).ToNot(HaveOccurred())
 
-		binParentDir, err = ioutil.TempDir("", "envoy-nginx")
+		binParentDir, err = os.MkdirTemp("", "envoy-nginx")
 		Expect(err).ToNot(HaveOccurred())
 
 		basename := filepath.Base(bin)
@@ -43,14 +42,14 @@ var _ = Describe("Acceptance", func() {
 		Expect(err).ToNot(HaveOccurred())
 		envoyNginxBin = filepath.Join(binParentDir, basename)
 
-		tmp, err := ioutil.TempFile("", "sdsIdCreds")
+		tmp, err := os.CreateTemp("", "sdsIdCreds")
 		Expect(err).ToNot(HaveOccurred())
 		sdsIdCredsFile = tmp.Name()
 		tmp.Close()
 		err = CopyFile(SdsIdCredsFixture, sdsIdCredsFile)
 		Expect(err).ToNot(HaveOccurred())
 
-		tmp, err = ioutil.TempFile("", "sdsC2CCreds")
+		tmp, err = os.CreateTemp("", "sdsC2CCreds")
 		Expect(err).ToNot(HaveOccurred())
 		sdsC2CCredsFile = tmp.Name()
 		tmp.Close()
@@ -123,10 +122,10 @@ var _ = Describe("Acceptance", func() {
 				certFile := filepath.Join(nginxDir, "id-cert.pem")
 				keyFile := filepath.Join(nginxDir, "id-key.pem")
 
-				currentCert, err := ioutil.ReadFile(string(certFile))
+				currentCert, err := os.ReadFile(string(certFile))
 				Expect(err).ShouldNot(HaveOccurred())
 
-				currentKey, err := ioutil.ReadFile(string(keyFile))
+				currentKey, err := os.ReadFile(string(keyFile))
 				Expect(err).ShouldNot(HaveOccurred())
 
 				Expect(string(currentCert)).To(Equal(expectedCert))
@@ -154,10 +153,10 @@ var _ = Describe("Acceptance", func() {
 				certFile := filepath.Join(nginxDir, "c2c-cert.pem")
 				keyFile := filepath.Join(nginxDir, "c2c-key.pem")
 
-				currentCert, err := ioutil.ReadFile(string(certFile))
+				currentCert, err := os.ReadFile(string(certFile))
 				Expect(err).ShouldNot(HaveOccurred())
 
-				currentKey, err := ioutil.ReadFile(string(keyFile))
+				currentKey, err := os.ReadFile(string(keyFile))
 				Expect(err).ShouldNot(HaveOccurred())
 
 				Expect(string(currentCert)).To(Equal(expectedCert))

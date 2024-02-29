@@ -2,7 +2,7 @@ package parser
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 	"strings"
 
 	yaml "gopkg.in/yaml.v2"
@@ -111,7 +111,7 @@ func NewEnvoyConfParser() EnvoyConfParser {
 func (e EnvoyConfParser) ReadUnmarshalEnvoyConfig(envoyConfFile string) (EnvoyConf, error) {
 	conf := EnvoyConf{}
 
-	contents, err := ioutil.ReadFile(envoyConfFile)
+	contents, err := os.ReadFile(envoyConfFile)
 	if err != nil {
 		return conf, fmt.Errorf("Failed to read envoy config: %s", err)
 	}

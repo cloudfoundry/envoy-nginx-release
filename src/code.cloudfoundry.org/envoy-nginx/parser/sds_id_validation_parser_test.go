@@ -1,7 +1,6 @@
 package parser_test
 
 import (
-	"io/ioutil"
 	"os"
 
 	"code.cloudfoundry.org/envoy-nginx/parser"
@@ -30,7 +29,7 @@ var _ = Describe("SdsIdValidationParser", func() {
 			var invalidSdsFile string
 
 			BeforeEach(func() {
-				tmpFile, err := ioutil.TempFile(os.TempDir(), "invalid-sds-server-validation-context.yaml")
+				tmpFile, err := os.CreateTemp(os.TempDir(), "invalid-sds-server-validation-context.yaml")
 				Expect(err).NotTo(HaveOccurred())
 				_, err = tmpFile.Write([]byte(""))
 				Expect(err).NotTo(HaveOccurred())
@@ -63,7 +62,7 @@ var _ = Describe("SdsIdValidationParser", func() {
 			var invalidYamlFile string
 
 			BeforeEach(func() {
-				tmpFile, err := ioutil.TempFile(os.TempDir(), "invalid.yaml")
+				tmpFile, err := os.CreateTemp(os.TempDir(), "invalid.yaml")
 				Expect(err).NotTo(HaveOccurred())
 				_, err = tmpFile.Write([]byte("%%%"))
 				Expect(err).NotTo(HaveOccurred())

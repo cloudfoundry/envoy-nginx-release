@@ -3,7 +3,7 @@ package parser
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 	"text/template"
@@ -178,7 +178,7 @@ stream {
 `, convertToUnixPath(n.pidFile),
 		out)
 
-	err = ioutil.WriteFile(n.confFile, []byte(confTemplate), FilePerm)
+	err = os.WriteFile(n.confFile, []byte(confTemplate), FilePerm)
 	if err != nil {
 		return fmt.Errorf("%s - write file failed: %s", n.confFile, err)
 	}
@@ -202,12 +202,12 @@ func (n NginxConfig) WriteTLSFiles() error {
 			keyFile = n.c2cKeyFile
 		}
 
-		err = ioutil.WriteFile(certFile, []byte(cert), FilePerm)
+		err = os.WriteFile(certFile, []byte(cert), FilePerm)
 		if err != nil {
 			return fmt.Errorf("write cert: %s", err)
 		}
 
-		err = ioutil.WriteFile(keyFile, []byte(key), FilePerm)
+		err = os.WriteFile(keyFile, []byte(key), FilePerm)
 		if err != nil {
 			return fmt.Errorf("write key: %s", err)
 		}
@@ -223,7 +223,7 @@ func (n NginxConfig) WriteTLSFiles() error {
 		return nil
 	}
 
-	err = ioutil.WriteFile(n.trustedCAFile, []byte(caCert), FilePerm)
+	err = os.WriteFile(n.trustedCAFile, []byte(caCert), FilePerm)
 	if err != nil {
 		return fmt.Errorf("write ca cert file: %s", err)
 	}

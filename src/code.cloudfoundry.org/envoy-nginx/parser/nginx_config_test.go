@@ -2,7 +2,6 @@ package parser_test
 
 import (
 	"errors"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -35,7 +34,7 @@ var _ = Describe("Nginx Config", func() {
 		envoyConfParser = &fakes.EnvoyConfParser{}
 
 		var err error
-		tmpdir, err = ioutil.TempDir("", "nginx")
+		tmpdir, err = os.MkdirTemp("", "nginx")
 		Expect(err).ShouldNot(HaveOccurred())
 		err = os.Mkdir(filepath.Join(tmpdir, "conf"), os.ModePerm)
 		Expect(err).ShouldNot(HaveOccurred())
@@ -65,27 +64,27 @@ var _ = Describe("Nginx Config", func() {
 			certPath := filepath.Join(tmpdir, "id-cert.pem")
 			keyPath := filepath.Join(tmpdir, "id-key.pem")
 
-			cert, err := ioutil.ReadFile(string(certPath))
+			cert, err := os.ReadFile(string(certPath))
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(string(cert)).To(Equal("some-id-cert"))
 
-			key, err := ioutil.ReadFile(string(keyPath))
+			key, err := os.ReadFile(string(keyPath))
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(string(key)).To(Equal("some-id-key"))
 
 			certPath = filepath.Join(tmpdir, "c2c-cert.pem")
 			keyPath = filepath.Join(tmpdir, "c2c-key.pem")
 
-			cert, err = ioutil.ReadFile(string(certPath))
+			cert, err = os.ReadFile(string(certPath))
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(string(cert)).To(Equal("some-c2c-cert"))
 
-			key, err = ioutil.ReadFile(string(keyPath))
+			key, err = os.ReadFile(string(keyPath))
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(string(key)).To(Equal("some-c2c-key"))
 
 			caPath := filepath.Join(tmpdir, "id-ca.pem")
-			ca, err := ioutil.ReadFile(string(caPath))
+			ca, err := os.ReadFile(string(caPath))
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(string(ca)).To(Equal("some-ca-cert"))
 		})
@@ -102,11 +101,11 @@ var _ = Describe("Nginx Config", func() {
 				certPath := filepath.Join(tmpdir, "id-cert.pem")
 				keyPath := filepath.Join(tmpdir, "id-key.pem")
 
-				cert, err := ioutil.ReadFile(string(certPath))
+				cert, err := os.ReadFile(string(certPath))
 				Expect(err).ShouldNot(HaveOccurred())
 				Expect(string(cert)).To(Equal("some-id-cert"))
 
-				key, err := ioutil.ReadFile(string(keyPath))
+				key, err := os.ReadFile(string(keyPath))
 				Expect(err).ShouldNot(HaveOccurred())
 				Expect(string(key)).To(Equal("some-id-key"))
 
@@ -120,7 +119,7 @@ var _ = Describe("Nginx Config", func() {
 				Expect(err).Should(HaveOccurred())
 
 				caPath := filepath.Join(tmpdir, "id-ca.pem")
-				ca, err := ioutil.ReadFile(string(caPath))
+				ca, err := os.ReadFile(string(caPath))
 				Expect(err).ShouldNot(HaveOccurred())
 				Expect(string(ca)).To(Equal("some-ca-cert"))
 			})
@@ -199,7 +198,7 @@ var _ = Describe("Nginx Config", func() {
 				err = nginxConfig.Generate(EnvoyConfigFixture)
 				Expect(err).ShouldNot(HaveOccurred())
 
-				config, err = ioutil.ReadFile(nginxConfig.GetConfFile())
+				config, err = os.ReadFile(nginxConfig.GetConfFile())
 				Expect(err).ShouldNot(HaveOccurred())
 
 				By("having a valid pid directive", func() {
@@ -289,7 +288,7 @@ var _ = Describe("Nginx Config", func() {
 			BeforeEach(func() {
 				nginxConfig = parser.NewNginxConfig(envoyConfParser, []parser.SdsCredParser{sdsIdCredParser, sdsC2CCredParser}, sdsValidationParser, "not-a-real-dir")
 			})
-			// We do not test that ioutil.WriteFile fails for cert/key because
+			// We do not test that os.WriteFile fails for cert/key because
 			// our trick to cause that function to fail only works once!
 			// The trick is to pass a directory that isn't real.
 			It("returns a helpful error message", func() {

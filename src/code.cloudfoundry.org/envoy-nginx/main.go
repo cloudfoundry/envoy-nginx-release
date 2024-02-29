@@ -1,7 +1,6 @@
 package main
 
 import (
-	"io/ioutil"
 	"log"
 	"os"
 
@@ -24,7 +23,7 @@ func main() {
 		log.Fatalf("envoy-nginx application: get nginx-path: %s", err)
 	}
 
-	nginxConfDir, err := ioutil.TempDir("", "nginx")
+	nginxConfDir, err := os.MkdirTemp("", "nginx")
 	if err != nil {
 		log.Fatalf("envoy-nginx application: create nginx config dir: %s", err)
 	}
