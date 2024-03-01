@@ -332,7 +332,7 @@ func parseNginxConfig(config []byte) map[string][]listenerInfo {
 		port, err := strconv.Atoi(portStr)
 		Expect(err).NotTo(HaveOccurred())
 
-		re = regexp.MustCompile(`ssl_verify_client\s*(.*);"`)
+		re = regexp.MustCompile(`ssl_verify_client\s*(.*);`)
 		matches = re.FindStringSubmatch(serverConfig)
 		var verify bool
 		if len(matches) > 0 && matches[1] == "on" {
