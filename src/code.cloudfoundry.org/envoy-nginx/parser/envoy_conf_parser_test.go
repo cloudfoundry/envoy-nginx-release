@@ -1,7 +1,6 @@
 package parser_test
 
 import (
-	"io/ioutil"
 	"os"
 
 	"code.cloudfoundry.org/envoy-nginx/parser"
@@ -43,7 +42,7 @@ var _ = Describe("EnvoyConfigParser", func() {
 		Context("when envoy conf contains invalid yaml", func() {
 			var invalidYamlFile string
 			BeforeEach(func() {
-				tmpFile, err := ioutil.TempFile(os.TempDir(), "envoy-invalid.yaml")
+				tmpFile, err := os.CreateTemp(os.TempDir(), "envoy-invalid.yaml")
 				Expect(err).NotTo(HaveOccurred())
 
 				invalidYamlFile = tmpFile.Name()

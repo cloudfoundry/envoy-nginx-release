@@ -3,7 +3,7 @@ package parser
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"os"
 
 	yaml "gopkg.in/yaml.v2"
 )
@@ -50,7 +50,7 @@ func NewSdsC2CCredParser(file string) SdsCredParser {
 
 /* Parses the Envoy SDS file and extracts the cert and key */
 func (p sdsCredParser) GetCertAndKey() (string, string, error) {
-	contents, err := ioutil.ReadFile(p.file)
+	contents, err := os.ReadFile(p.file)
 	if err != nil {
 		return "", "", fmt.Errorf("Failed to read sds creds: %s", err)
 	}

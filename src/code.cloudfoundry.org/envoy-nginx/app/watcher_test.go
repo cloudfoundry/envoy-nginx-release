@@ -2,7 +2,6 @@ package app_test
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 
 	"code.cloudfoundry.org/envoy-nginx/app"
@@ -20,12 +19,12 @@ var _ = Describe("Watcher", func() {
 		)
 
 		BeforeEach(func() {
-			watchmeFd, err := ioutil.TempFile("", "watchme")
+			watchmeFd, err := os.CreateTemp("", "watchme")
 			Expect(err).ToNot(HaveOccurred())
 			watchmeFile = watchmeFd.Name()
 			watchmeFd.Close()
 
-			newFileFd, err := ioutil.TempFile("", "new-file")
+			newFileFd, err := os.CreateTemp("", "new-file")
 			Expect(err).ToNot(HaveOccurred())
 			newFile = newFileFd.Name()
 			newFileFd.Close()
@@ -40,7 +39,7 @@ var _ = Describe("Watcher", func() {
 			ch := make(chan string)
 			readyChan := make(chan bool)
 
-			err = ioutil.WriteFile(watchmeFile, []byte("Heyy"), 0666)
+			err = os.WriteFile(watchmeFile, []byte("Heyy"), 0666)
 			Expect(err).ToNot(HaveOccurred())
 
 			go func() {
@@ -54,7 +53,7 @@ var _ = Describe("Watcher", func() {
 
 			for i := 0; i <= 3; i++ {
 				content := fmt.Sprintf("Hello-%d\n", i)
-				err = ioutil.WriteFile(newFile, []byte(content), 0666)
+				err = os.WriteFile(newFile, []byte(content), 0666)
 				Expect(err).ToNot(HaveOccurred())
 				err = RotateCert(newFile, watchmeFile)
 				Expect(err).ToNot(HaveOccurred())
