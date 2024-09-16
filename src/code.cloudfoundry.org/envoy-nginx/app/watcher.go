@@ -33,9 +33,12 @@ func WatchFile(filepath string, readyChan chan bool, callback func() error) erro
 					* it's a new file in the fs.
 					* Maybe it watches the inode or something
 					 */
-					watcher.Add(filepath)
+					err := watcher.Add(filepath)
+					if err != nil {
+						watcherErr <- err
+					}
 
-					err := callback()
+					err = callback()
 					if err != nil {
 						watcherErr <- err
 					}
