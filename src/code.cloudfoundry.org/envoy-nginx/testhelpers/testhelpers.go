@@ -29,7 +29,7 @@ func RotateCert(newfile, sdsfilepath string) error {
 	if err != nil {
 		return err
 	}
-	err = os.WriteFile(tmpPath, contents, 0666)
+	err = os.WriteFile(tmpPath, contents, 0644)
 	if err != nil {
 		return err
 	}

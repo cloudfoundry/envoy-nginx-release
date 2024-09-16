@@ -70,12 +70,12 @@ func (a App) GetNginxPath() (path string, err error) {
 func (a App) Run(nginxConfDir, nginxBinPath, sdsIdCreds, sdsC2CCreds, sdsIdValidation string) error {
 	a.SetNginxBin(nginxBinPath)
 
-	err := os.Mkdir(filepath.Join(nginxConfDir, "logs"), os.ModePerm)
+	err := os.Mkdir(filepath.Join(nginxConfDir, "logs"), 0755)
 	if err != nil {
 		return fmt.Errorf("create nginx/logs dir for error.log: %s", err)
 	}
 
-	err = os.Mkdir(filepath.Join(nginxConfDir, "conf"), os.ModePerm)
+	err = os.Mkdir(filepath.Join(nginxConfDir, "conf"), 0755)
 	if err != nil {
 		return fmt.Errorf("create nginx/conf dir for nginx.conf: %s", err)
 	}
