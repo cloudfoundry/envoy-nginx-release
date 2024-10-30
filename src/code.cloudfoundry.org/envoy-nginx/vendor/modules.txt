@@ -15,7 +15,7 @@ github.com/google/go-cmp/cmp/internal/diff
 github.com/google/go-cmp/cmp/internal/flags
 github.com/google/go-cmp/cmp/internal/function
 github.com/google/go-cmp/cmp/internal/value
-# github.com/google/pprof v0.0.0-20241021161924-4cf4322d492d
+# github.com/google/pprof v0.0.0-20241029153458-d1b30febd7db
 ## explicit; go 1.22
 github.com/google/pprof/profile
 # github.com/hpcloud/tail v1.0.1-0.20180514194441-a1dbeea552b7
@@ -25,8 +25,8 @@ github.com/hpcloud/tail/ratelimiter
 github.com/hpcloud/tail/util
 github.com/hpcloud/tail/watch
 github.com/hpcloud/tail/winfile
-# github.com/onsi/ginkgo/v2 v2.20.2
-## explicit; go 1.22
+# github.com/onsi/ginkgo/v2 v2.21.0
+## explicit; go 1.22.0
 github.com/onsi/ginkgo/v2
 github.com/onsi/ginkgo/v2/config
 github.com/onsi/ginkgo/v2/formatter
@@ -47,7 +47,7 @@ github.com/onsi/ginkgo/v2/internal/parallel_support
 github.com/onsi/ginkgo/v2/internal/testingtproxy
 github.com/onsi/ginkgo/v2/reporters
 github.com/onsi/ginkgo/v2/types
-# github.com/onsi/gomega v1.34.2
+# github.com/onsi/gomega v1.35.0
 ## explicit; go 1.22
 github.com/onsi/gomega
 github.com/onsi/gomega/format
