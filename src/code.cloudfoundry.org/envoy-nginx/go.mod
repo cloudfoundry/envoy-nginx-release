@@ -7,8 +7,8 @@ toolchain go1.23.6
 require (
 	github.com/fsnotify/fsnotify v1.8.0
 	github.com/hpcloud/tail v1.0.1-0.20180514194441-a1dbeea552b7
-	github.com/onsi/ginkgo/v2 v2.23.0
-	github.com/onsi/gomega v1.36.2
+	github.com/onsi/ginkgo/v2 v2.23.3
+	github.com/onsi/gomega v1.36.3
 	gopkg.in/yaml.v2 v2.4.0
 )
 
