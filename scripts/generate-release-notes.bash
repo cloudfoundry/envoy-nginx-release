@@ -9,14 +9,6 @@ CI="${THIS_FILE_DIR}/../../wg-app-platform-runtime-ci"
 . "$CI/shared/helpers/git-helpers.bash"
 unset THIS_FILE_DIR
 
-function get_start_ref_from_range {
-  echo "${1%%...*}"
-}
-
-function get_end_ref_from_range {
-  echo "${version_range#*...}"
-}
-
 # ex. version_range="v0.343.0...v0.344.0"
 version_range="${1:?Please provide the start and end versions you want to generate release notes for './generate-release-notes.bash start_ref...end_ref' }"
 local_start_ref=$(get_start_ref_from_range "${version_range}")
