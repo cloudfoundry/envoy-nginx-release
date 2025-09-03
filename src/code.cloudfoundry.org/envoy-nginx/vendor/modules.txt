@@ -19,7 +19,7 @@ github.com/google/go-cmp/cmp/internal/diff
 github.com/google/go-cmp/cmp/internal/flags
 github.com/google/go-cmp/cmp/internal/function
 github.com/google/go-cmp/cmp/internal/value
-# github.com/google/pprof v0.0.0-20250820193118-f64d9cf942d6
+# github.com/google/pprof v0.0.0-20250902232947-5eec23c92c42
 ## explicit; go 1.24.0
 github.com/google/pprof/profile
 # github.com/hpcloud/tail v1.0.1-0.20180514194441-a1dbeea552b7
@@ -29,7 +29,7 @@ github.com/hpcloud/tail/ratelimiter
 github.com/hpcloud/tail/util
 github.com/hpcloud/tail/watch
 github.com/hpcloud/tail/winfile
-# github.com/onsi/ginkgo/v2 v2.25.1
+# github.com/onsi/ginkgo/v2 v2.25.2
 ## explicit; go 1.23.0
 github.com/onsi/ginkgo/v2
 github.com/onsi/ginkgo/v2/config
