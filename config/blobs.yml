@@ -1,4 +1,4 @@
-envoy-nginx/envoy-nginx-1.31.5.zip:
-  size: 2571847
-  object_id: c5cee4fd-71a6-455a-5f0a-5176dffe91ef
-  sha: sha256:f091ad9ef92547791ba2d32c5575f3731a0d3ebd1df08e84db4bf23139b6c67d
+envoy-nginx/envoy-nginx-1.30.5.zip:
+  size: 2554409
+  object_id: 4800440a-70c4-43cc-7b97-8cc5c400d7c3
+  sha: sha256:b911e35aece73a0b9d8187de8e510465b3226867a2f8aa05f3096933d65e2569
