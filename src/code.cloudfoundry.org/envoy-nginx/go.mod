@@ -5,8 +5,8 @@ go 1.26.0
 require (
 	github.com/fsnotify/fsnotify v1.10.1
 	github.com/hpcloud/tail v1.0.1-0.20180514194441-a1dbeea552b7
-	github.com/onsi/ginkgo/v2 v2.32.2
-	github.com/onsi/gomega v1.43.0
+	github.com/onsi/ginkgo/v2 v2.33.0
+	github.com/onsi/gomega v1.43.1
 	gopkg.in/yaml.v2 v2.4.0
 )
 
