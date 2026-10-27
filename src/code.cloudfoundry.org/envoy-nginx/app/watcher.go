@@ -14,7 +14,8 @@ func WatchFile(filepath string, readyChan chan bool, callback func() error) erro
 	}
 	defer watcher.Close()
 
-	watcherErr := make(chan error)
+	// Buffered so the reporting goroutine never blocks if WatchFile already returned.
+	watcherErr := make(chan error, 1)
 
 	go func() {
 		for {
@@ -22,6 +23,7 @@ func WatchFile(filepath string, readyChan chan bool, callback func() error) erro
 			case event, ok := <-watcher.Events:
 				if !ok {
 					watcherErr <- errors.New("File watcher: unexpected event")
+					return
 				}
 				if event.Op&fsnotify.Create == fsnotify.Create ||
 					event.Op&fsnotify.Write == fsnotify.Write ||
@@ -36,19 +38,23 @@ func WatchFile(filepath string, readyChan chan bool, callback func() error) erro
 					err := watcher.Add(filepath)
 					if err != nil {
 						watcherErr <- err
+						return
 					}
 
 					err = callback()
 					if err != nil {
 						watcherErr <- err
+						return
 					}
 				}
 			case err, ok := <-watcher.Errors:
-				if err != nil {
-					watcherErr <- err
-				}
 				if !ok {
 					watcherErr <- errors.New("File watcher: unexpected error")
+					return
+				}
+				if err != nil {
+					watcherErr <- err
+					return
 				}
 			}
 		}
@@ -58,7 +64,16 @@ func WatchFile(filepath string, readyChan chan bool, callback func() error) erro
 	if err != nil {
 		return err
 	}
-	readyChan <- true
+	/*
+	 * readyChan may be shared by several watchers and only read once
+	 * (see envoy.go), so do not block forever on it: if the watcher fails
+	 * before anyone reads readyChan, return the error instead.
+	 */
+	select {
+	case readyChan <- true:
+	case err := <-watcherErr:
+		return err
+	}
 
 	return <-watcherErr
 }
