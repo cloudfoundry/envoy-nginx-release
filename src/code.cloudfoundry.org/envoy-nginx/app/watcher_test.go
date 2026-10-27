@@ -1,6 +1,7 @@
 package app_test
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
@@ -62,6 +63,68 @@ var _ = Describe("Watcher", func() {
 				Eventually(ch, "10s").Should(Receive(&str))
 				Expect(str).Should(Equal("message"))
 			}
+		})
+
+		Context("when several watchers share a readyChan that is only read once", func() {
+			var (
+				watchedFiles []string
+				newFiles     []string
+			)
+
+			BeforeEach(func() {
+				watchedFiles = []string{watchmeFile}
+				newFiles = []string{newFile}
+
+				watchmeFd, err := os.CreateTemp("", "watchme-2")
+				Expect(err).ToNot(HaveOccurred())
+				watchedFiles = append(watchedFiles, watchmeFd.Name())
+				watchmeFd.Close()
+
+				newFileFd, err := os.CreateTemp("", "new-file-2")
+				Expect(err).ToNot(HaveOccurred())
+				newFiles = append(newFiles, newFileFd.Name())
+				newFileFd.Close()
+			})
+
+			AfterEach(func() {
+				Expect(os.Remove(watchedFiles[1])).NotTo(HaveOccurred())
+				Expect(os.Remove(newFiles[1])).NotTo(HaveOccurred())
+			})
+
+			It("returns the callback error from every watcher instead of blocking", func() {
+				readyChan := make(chan bool)
+				errCh := make(chan error, len(watchedFiles))
+
+				for _, f := range watchedFiles {
+					go func() {
+						errCh <- app.WatchFile(f, readyChan, func() error {
+							return errors.New("callback failed")
+						})
+					}()
+				}
+
+				// Consumed exactly once, as in envoy.go
+				<-readyChan
+
+				// The watcher that lost the readyChan send may not have called
+				// watcher.Add yet, so keep rotating until every watcher reports.
+				got := 0
+				Eventually(func() int {
+					for i := range watchedFiles {
+						Expect(os.WriteFile(newFiles[i], []byte("rotated"), 0666)).To(Succeed())
+						Expect(RotateCert(newFiles[i], watchedFiles[i])).To(Succeed())
+					}
+					for {
+						select {
+						case err := <-errCh:
+							Expect(err).To(MatchError("callback failed"))
+							got++
+						default:
+							return got
+						}
+					}
+				}, "5s", "100ms").Should(Equal(len(watchedFiles)))
+			})
 		})
 	})
 })
