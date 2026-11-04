@@ -5,7 +5,7 @@ go 1.26.0
 require (
 	github.com/fsnotify/fsnotify v1.10.1
 	github.com/hpcloud/tail v1.0.1-0.20180514194441-a1dbeea552b7
-	github.com/onsi/ginkgo/v2 v2.33.1
+	github.com/onsi/ginkgo/v2 v2.34.0
 	github.com/onsi/gomega v1.44.0
 	gopkg.in/yaml.v2 v2.4.0
 )
@@ -15,8 +15,8 @@ require (
 	github.com/go-logr/logr v1.4.4 // indirect
 	github.com/go-task/slim-sprig/v3 v3.0.0 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
-	github.com/google/pprof v0.0.0-20261026192309-dbd0ed30aa88 // indirect
-	go.yaml.in/yaml/v3 v3.0.5 // indirect
+	github.com/google/pprof v0.0.0-20261103193413-97e8293de3c4 // indirect
+	go.yaml.in/yaml/v3 v3.0.6 // indirect
 	golang.org/x/mod v0.42.0 // indirect
 	golang.org/x/net v0.62.0 // indirect
 	golang.org/x/sync v0.24.0 // indirect
